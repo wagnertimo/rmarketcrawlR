@@ -16,7 +16,7 @@ getOperatingReserveCalls(date_from, date_to, uenb_type, rl_type)
 \item{rl_type}{[SRL, MRL, RZ_SALDO, REBAP, ZUSATZMASSNAHMEN, NOTHILFE]}
 }
 \value{
-df the data.frame variable containing the operating reserve call table
+data.frame variable containing the operating reserve call table
 }
 \description{
 This main functions retrieves the operating reserve calls from @references \url{https://www.regelleistung.net/ext/data/}

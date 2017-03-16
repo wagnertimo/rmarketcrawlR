@@ -44,7 +44,7 @@ preprocess_rl_calls <- function(post_response) {
   # Preprocess the response data
   #
   # Get the response content as a text
-  response_content <- content(response, "text")
+  response_content <- content(post_response, "text")
   # Delete the first 5 rows (unneccessary additional infos)
   # Therefore split first the text
   response_content <-strsplit(response_content, "\n")
@@ -93,7 +93,7 @@ build_df_rl_calls <- function(response_content) {
 #' @param uenb_type [50Hz (4), TenneT (2), Amprion (3), TransnetBW (1), Netzregelverbund (6), IGCC (11)]
 #' @param rl_type [SRL, MRL, RZ_SALDO, REBAP, ZUSATZMASSNAHMEN, NOTHILFE]
 #'
-#' @return df the data.frame variable containing the operating reserve call table
+#' @return data.frame variable containing the operating reserve call table
 #'
 #' @examples
 #' getOperatingReserveCalls('07.03.2017', '14.03.2017', '4', 'SRL')
@@ -102,13 +102,13 @@ build_df_rl_calls <- function(response_content) {
 getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
 
   # Do the POST request and retrieve the response from the server
-  response <- scrape_rl_calls(date_from, date_to, uenb_type, rl_type)
+  r <- scrape_rl_calls(date_from, date_to, uenb_type, rl_type)
   # Preprocess the response
-  p <- preprocess_rl_calls(response)
+  p <- preprocess_rl_calls(r)
   # Build up the data.frame
-  df <- build_df_rl_calls(p)
+  d <- build_df_rl_calls(p)
 
-  return(df)
+  return(d)
 
 }
 
