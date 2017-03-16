@@ -1,0 +1,6 @@
+rmarketcrawlR
+
+This R package provides functions to crawl the german operating reserve market at the platform https://www.regelleistung.net/ext/data/
+It retrieves the 15min operating reserve calls for several products and providers.
+
+
