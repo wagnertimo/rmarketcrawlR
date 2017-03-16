@@ -242,7 +242,7 @@ getOperatingReserveAuctions <- function(date_from, productId) {
 
 #' @title getOperatingReserveCalls
 #'
-#' @description This main function retrieves the operating reserve calls from \url{https://www.regelleistung.net/ext/data/}
+#' @description This main function retrieves the operating reserve calls from \url{https://www.regelleistung.net/ext/data/}. The time interval can only lay within the same month.
 #'
 #' @param date_from sets the starting date in format: DD.MM.YYYY
 #' @param date_to sets the ending date in format: DD.MM.YYYY
@@ -263,7 +263,7 @@ getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
   # Preprocess the response
   p <- preprocess_rl_calls(r)
   # Build up the data.frame
-  d <- build_df_rl_calls(p, "temp.csv")
+  d <- build_df_rl_calls_auctions(p, "temp.csv")
 
   return(d)
 
