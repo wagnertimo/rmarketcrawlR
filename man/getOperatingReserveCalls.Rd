@@ -19,7 +19,7 @@ getOperatingReserveCalls(date_from, date_to, uenb_type, rl_type)
 data.frame variable containing the operating reserve call table
 }
 \description{
-This main functions retrieves the operating reserve calls from @references \url{https://www.regelleistung.net/ext/data/}
+This main function retrieves the operating reserve calls from \url{https://www.regelleistung.net/ext/data/}
 }
 \examples{
 getOperatingReserveCalls('07.03.2017', '14.03.2017', '4', 'SRL')

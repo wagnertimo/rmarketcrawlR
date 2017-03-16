@@ -12,7 +12,7 @@ The scrapeData script
 \author{
 Timo Wagner, \email{wagnertimo@gmx.de}
 
-It contains main and helper functions to crawl call and auction data out of
+It contains main and helper functions to crawl call and auction results data out of
 }
 \references{
 \url{https://www.regelleistung.net/ext/data/}
