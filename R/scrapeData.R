@@ -192,6 +192,102 @@ build_df_rl_calls_auctions <- function(response_content, fileName) {
 
 
 
+#
+# HELPER FUNCTIONS FOR REQUIREMENT DATA
+#
+# Requirement of secondary operating reserve energy (Bedarf an SRL)
+# Data Dowload: https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/regelenergie-bedarf-und-abruf
+# --> 4sec SRL requirement of the Regelnetzverbund since July (07) 2010 monthly data
+#
+# [http://www.50hertz.com/de/Maerkte/Regelenergie/Regelenergie-Downloadbereich --> no zip and only yearly]
+#
+
+# This helper function downloads the zip file and returns a data.frame of a given date code.
+# The date code is specified by the year and month e.g. "201612". All the files have a standard naming.
+scrape_rl_need_month <- function(date_code) {
+
+  # Create a temporary file to store the downloaded zip file in it
+  temp <- tempfile()
+  url = paste('https://www.transnetbw.de/files/bis/srlbedarf/', date_code, '_SRL_Bedarf.zip', sep = "");
+  download.file(url, temp)
+  # Unzip in read in the csv file into a data.frame
+  dft <-  read.csv(unz(temp, paste(date_code, "_SRL_Bedarf.csv", sep = "")), , header = FALSE, sep = ",", dec = ".")
+  # Since there are no headers, include appropriate header names
+  colnames(dft) <- c("Date", "Time", "Type", "MW")
+  # delete the temporary file
+  rm(temp)
+
+  return(dft)
+
+}
+
+# THis is a little helper function to deal with preceeding zeros in the numbers under 10. This is needed to handle the date format of months
+# The parameter month is in the string format M (e.g. for august 8 which has to be converted into 08 and for november 11 it stays)
+preceedingZerosForMonths <- function(month) {
+
+  if(as.integer(month) < 10) {
+    month <- paste("0",month, sep = "")
+  }
+
+  return(month)
+}
+
+# This function builds up an array containing all the date codes needed to build the whole data.frame.
+getDateCodesArray <- function(date_from, date_to) {
+
+  # Init
+  dateCodes <- c()
+  date_to_month <- strsplit(date_to, "\\.")[[1]][2]
+  date_to_year <- strsplit(date_to, "\\.")[[1]][3]
+  # Defines the stop criteria for the while loop
+  date_to_code <- paste(date_to_year, date_to_month, sep = "");
+  date_month <- strsplit(date_from, "\\.")[[1]][2]
+  date_year <- strsplit(date_from, "\\.")[[1]][3]
+
+  # Fill the dateCodes array by counting up the number of months (and year if there is a year change) since the end date (date_to_code) is reached
+  repeat{
+    # Build up the date code
+    dateCode <- paste(date_year, date_month, sep = "")
+    # Append it to the result array
+    dateCodes <- c(dateCodes, dateCode)
+    # Check if end date is reached
+    if(dateCode == date_to_code){
+      break
+    }
+    # Next date
+    # Count up to the next month, but be aware of a year change
+    if (date_month == "12") {
+      date_year <- toString((as.integer(date_year) + 1))
+    }
+    # Don't forget the receeding zeros!
+    date_month <- preceedingZerosForMonths(toString((as.integer(date_month) + 1) %% 12))
+  }
+
+  return(dateCodes)
+}
+
+# THis method uses all the date codes within the specified time period to merge the individual data.frames together
+buildDataFrameForDateCodes <- function(dateCodes) {
+
+  dateCodes <- getDateCodesArray(date_from, date_to)
+
+  # Init
+  dfall <- data.frame()
+  for(i in 1:length(dateCodes)){
+    df <- scrape_rl_need_month(dateCodes[i])
+    dfall <- rbind(dfall,df)
+  }
+  # Change the factor Date variable to an actual Date Type
+  dfall$Date <- as.Date(dfall$Date, format = "%Y/%m/%d")
+
+  return(dfall)
+}
+
+
+
+
+
+
 
 #
 # MAIN FUNCTIONS
@@ -271,7 +367,30 @@ getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
 
 
 
+#' @title getOperatingReserveNeeds
+#'
+#' @description This main function retrieves the operating reserve needs from \url{https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/regelenergie-bedarf-und-abruf}. The resolution is 4sec. The function can take awhile since it has to download sever MBs of data. The oldest data that can be retrieved is July (07) 2010.
+#'
+#' @param date_from sets the starting date in format: DD.MM.YYYY
+#' @param date_to sets the ending date in format: DD.MM.YYYY
+#'
+#' @return data.frame variable containing the operating reserve need table for the specified time period
+#'
+#' @examples
+#' getOperatingReserveNeeds("30.12.2015", "02.01.2016")
+#'
+#' @export
+#'
+getOperatingReserveNeeds <- function(date_from, date_to) {
 
+  # Extract all the dataCodes to build the whole data.frame by downloading the zip file
+  df <- buildDataFrameForDateCodes(getDateCodesArray(date_from, date_to))
+  # Subset the whole data.frame to the given time period
+  df <- subset(df, Date >= as.Date(date_from, format = "%d.%m.%Y") & Date <= as.Date(date_to, format = "%d.%m.%Y"))
+
+  return(df)
+
+}
 
 
 
