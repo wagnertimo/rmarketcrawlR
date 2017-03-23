@@ -1,6 +1,8 @@
 rmarketcrawlR
 
-This R package provides functions to crawl the german operating reserve market at the platform https://www.regelleistung.net/ext/data/
+This R package provides functions to crawl the german operating reserve market of the platform https://www.regelleistung.net and contains scripts to analyze this data.
 It retrieves the 15min operating reserve calls for several products and providers.
+It retrieves the operating reserve auction results (anonymous order list of energy providers) for a specific product since a given timestamp.
+It retrieves the operating reserve needs for a specific time frame of the Netzregelverbund (NRV) based on a 4 sec resolution.
 
 
