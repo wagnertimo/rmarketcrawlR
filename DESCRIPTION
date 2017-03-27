@@ -1,6 +1,6 @@
 Package: rmarketcrawlR
 Type: Package
-Title: Crawling operating reserve data (15min calls, auction prices)
+Title: Crawling operating reserve data (15min calls, auction prices, 4sec needs)
 Version: 0.1.0
 Author: Timo Wagner
 Maintainer: Timo Wagner <wagnertimo@gmx.de>

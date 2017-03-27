@@ -4,7 +4,7 @@
 \alias{getOperatingReserveNeeds}
 \title{getOperatingReserveNeeds}
 \usage{
-getOperatingReserveNeeds(date_from, date_to)
+getOperatingReserveNeeds(startDate, endDate)
 }
 \arguments{
 \item{date_from}{sets the starting date in format: DD.MM.YYYY}

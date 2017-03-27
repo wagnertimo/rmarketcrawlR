@@ -266,10 +266,8 @@ getDateCodesArray <- function(date_from, date_to) {
   return(dateCodes)
 }
 
-# THis method uses all the date codes within the specified time period to merge the individual data.frames together
+# This method uses all the date codes within the specified time period to merge the individual data.frames together
 buildDataFrameForDateCodes <- function(dateCodes) {
-
-  dateCodes <- getDateCodesArray(date_from, date_to)
 
   # Init
   dfall <- data.frame()
@@ -381,12 +379,12 @@ getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
 #'
 #' @export
 #'
-getOperatingReserveNeeds <- function(date_from, date_to) {
+getOperatingReserveNeeds <- function(startDate, endDate) {
 
   # Extract all the dataCodes to build the whole data.frame by downloading the zip file
-  df <- buildDataFrameForDateCodes(getDateCodesArray(date_from, date_to))
+  df <- buildDataFrameForDateCodes(getDateCodesArray(startDate, endDate))
   # Subset the whole data.frame to the given time period
-  df <- subset(df, Date >= as.Date(date_from, format = "%d.%m.%Y") & Date <= as.Date(date_to, format = "%d.%m.%Y"))
+  df <- subset(df, Date >= as.Date(startDate, format = "%d.%m.%Y") & Date <= as.Date(endDate, format = "%d.%m.%Y"))
 
   return(df)
 
