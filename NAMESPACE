@@ -3,7 +3,7 @@
 export(aggregateXminAVGMW)
 export(approximateOperatingReserveCalls)
 export(buildCorrectingCallsDF)
-export(getAVGXmin)
+export(get15minAVGOff1minAVG)
 export(getNumberOfPosOrNegIn15min)
 export(getOperatingReserveAuctions)
 export(getOperatingReserveCalls)

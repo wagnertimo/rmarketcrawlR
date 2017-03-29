@@ -67,11 +67,6 @@ preprocessOperatingReserveNeeds <- function(df.needs) {
 
   library(lubridate)
 
-
-  #
-  # TODO Add the Tarif varible HT and NT
-  #
-
   # Build up a Date-Time object POSIXct for easier handling. Set the timezone to Middle Europe Time
   # format: e.g. 2017-30-12 00:00:04
   df.needs$DateTime <- as.POSIXct(paste(df.needs$Date, df.needs$Time, sep=" "), tz = "MET")
@@ -83,7 +78,7 @@ preprocessOperatingReserveNeeds <- function(df.needs) {
   # Get week day: 1 sunday 2 monday 3 tuesday 4 wednesday ... 7 saturday
   df.needs$Tarif <- ifelse((hour(df.needs$DateTime) >= 8 & hour(df.needs$DateTime) < 20) & (wday(df.needs$DateTime) > 1 & wday(df.needs$DateTime) < 7) & !isGermanHoliday(df.needs$DateTime), "HT", "NT")
 
-  drops <- c("Date", "Time")
+  drops <- c("Date", "Time", "Type")
 
   return(df.needs[ , !(names(df.needs) %in% drops)])
 
@@ -106,6 +101,10 @@ isGermanHoliday <- function(dateTime) {
   # EasterSunday(year = year)@Data == date |
   # Pentecost(year = year)@Data == date  | # Pfingstsonntag
   # DEChristmasEve(year = year)@Data == date |
+  # DECorpusChristi(year = year)@Data == date  |
+  # AllSaints(year = year)@Data == date |
+
+
 
   bool <- ifelse(NewYearsDay(year = year)@Data == date |
                  GoodFriday(year = year)@Data == date |
@@ -113,9 +112,7 @@ isGermanHoliday <- function(dateTime) {
                  LaborDay(year = year)@Data == date  |
                  DEAscension(year = year)@Data == date  |
                  PentecostMonday(year = year)@Data == date  |
-                 DECorpusChristi(year = year)@Data == date  |
                  DEGermanUnity(year = year)@Data == date  |
-                 AllSaints(year = year)@Data == date |
                  ChristmasDay(year = year)@Data == date |
                  BoxingDay(year = year)@Data == date,
                  TRUE, FALSE)
@@ -164,9 +161,9 @@ aggregateXminAVGMW <- function(df.needs, xmin) {
 
 
 
-#' @title getAVGXmin
+#' @title get15minAVGOff1minAVG
 #'
-#' @description This method takes a data.frame (operating reserve needs) and gets the corresponding average values of a specific time window.
+#' @description This method takes a data.frame of 1 min average values of operating reserve needs (@seealso aggregateXminAVGMW) and calculates the average values of a specific time window.
 #'
 #' @param dataframe - the data.frame with operating reserve needs (already preprocessed)
 #' @param xmin - the time window for which the average should be calculated (e.g. 15)
@@ -181,20 +178,28 @@ aggregateXminAVGMW <- function(df.needs, xmin) {
 #'
 #' @export
 #'
-getAVGXmin <- function(dataframe, xmin, direction) {
-  # filter the operating reserve power direction
-  dataframe <- dataframe[dataframe$Direction == direction,]
+get15minAVGOff1minAVG <- function(dataframe, direction) {
 
+  # Sample down the 1min avg values from the 4sec operating reserve need data
+  # Choose only the 4sec DateTime and the 1 min average need
+  dataframe <- dataframe[, c("DateTime","avg_1min_MW", "Tarif")]
+  # Cut the 4sec DateTime into 1 minute sections
+  dataframe$DateTime <- as.POSIXct(cut(dataframe$DateTime, breaks = "1 min"), tz = "MET")
+  # Only let 1 of the 15 1 min avg values remaining
+  dataframe <- unique(dataframe)
 
-  # Cut the Date-Times into Minutes such that every 4sec observation belongs to a bigger group of minutes
-  dataframe$cuttedTime <- cut(dataframe$DateTime, breaks = paste(xmin, "min", sep = " "))
+  # Build the 15min blocks
+  dataframe$cuttedTime <- cut(dataframe$DateTime, breaks = "15 min")
   dataframe$cuttedTime <- as.POSIXct(dataframe$cuttedTime, tz = "MET")
 
+  # filter the operating reserve power direction
+  ifelse(direction == "NEG", dataframe <- dataframe[dataframe$avg_1min_MW < 0,], dataframe <- dataframe[dataframe$avg_1min_MW >= 0,])
+
   # Create a data.frame with the mean values of the required MW in operating reserve power for every minute based on the cutted time
-  dataframe.avg <- aggregate(x = dataframe$MW,
+  dataframe.avg <- aggregate(x = dataframe$avg_1min_MW,
                              by = list(dataframe$cuttedTime),
-                             FUN = function(x){sum(x) / 225})
-  colnames(dataframe.avg) <- c("cuttedTime", paste("avg_", xmin, "min_MW_", direction, sep=""))
+                             FUN = function(x){sum(x) / 15})
+  colnames(dataframe.avg) <- c("cuttedTime", paste("avg_15min_MW_", direction, sep=""))
 
   return(dataframe.avg)
 }
@@ -286,10 +291,13 @@ buildCorrectingCallsDF <- function(df.1min, df.15min.neg, df.15min.pos, df.15min
     full_join(df.15min.pos, by="cuttedTime") %>%
     merge(df.15min.calls, by.x = "cuttedTime", by.y = "DateTime")
 
-  drops <- c("cuttedTime")
+  drops <- c("cuttedTime", "Tarif.y")
   t.all <- t.all[, !(names(t.all) %in% drops)]
   # Now also add the counters of 1min averages for NEG and POS in every 15min section
   t.all <- getNumberOfPosOrNegIn15min(t.all)
+
+  # Rename the Tarif.x column name which was created in fact of the merge of df.1min and df.15min.calls
+  names(t.all)[names(t.all) == 'Tarif.x'] <- 'Tarif'
 
   #
   # TODO: ADD THE SPECIAL CASE OF HOMOGENITY. LOOK IF CALLS ARE POSITIVE (OR NEGATIVE) BUT NEEDS ARE ALL NEGATIVE (OR POSITIVE)
