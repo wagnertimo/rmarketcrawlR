@@ -63,6 +63,74 @@ preprocess_rl_calls <- function(response_content) {
 }
 
 
+# This method is used to build a data.frame with monthly date time periods because the calls can only be retrieved within a month.
+# Therefore a input time period has to be split in monthly time periods.
+getDatesArrayOfMonths <- function(d1.start, d1.end) {
+
+  d1.start <- as.Date(d1.start, "%d.%m.%Y")
+  d1.end <- as.Date(d1.end, "%d.%m.%Y")
+
+  # calculate the number of monthly date time frames. Be aware of timeframes greater than a year
+  length <- (month(d1.end) - month((d1.start)) + 1) + (year(d1.end) - year(d1.start)) * 12
+
+  # init
+  d <- d1.start
+  dates <- data.frame()
+
+  for(e in 1:length) {
+
+    # Check if the end date was reached
+    if(endDateOfTheMonth(d) <= d1.end) {
+      # build the monthly timeframe with the start date or start date of the month till the end date of the month
+      date <- data.frame(start_date = d, end_date = endDateOfTheMonth(d))
+
+      dates <- rbind(dates, date)
+      # Get the next start date of the next month
+      d <- startDateOfTheMonth(nextMonthDate(d))
+
+    }
+    else{
+
+      date <- data.frame(start_date = d, end_date = d1.end)
+      dates <- rbind(dates, date)
+
+      break;
+    }
+  }
+
+  # Format into german date format
+  dates$start_date <- format(dates$start_date, "%d.%m.%Y")
+  dates$end_date <- format(dates$end_date, "%d.%m.%Y")
+
+  return(dates)
+}
+
+
+endDateOfTheMonth <- function(date) {
+  library(zoo)
+
+  return(as.Date(as.yearmon(date), frac = 1))
+}
+
+startDateOfTheMonth <- function(date){
+  library(zoo)
+
+  return(as.Date(as.yearmon(date), frac = 0))
+
+}
+
+nextMonthDate <- function(date){
+
+  library(lubridate)
+
+  month(date) <- month(date) + 1
+  day(date) <- days_in_month(month(date))
+
+  return(date)
+
+}
+
+
 
 
 #
@@ -178,6 +246,9 @@ build_df_rl_calls_auctions <- function(response_content, fileName) {
     # Delete last row -> there is an additional row with a parenthesis and NAs
     df <- df[1:nrow(df)-1,]
 
+    df$date_to <- as.Date(df$date_to, "%d.%m.%Y")
+    df$date_from <- as.Date(df$date_from, "%d.%m.%Y")
+
   }
 
 
@@ -185,6 +256,8 @@ build_df_rl_calls_auctions <- function(response_content, fileName) {
   #
   invisible(if (file.exists("temp.csv")) file.remove("temp.csv"))
   invisible(if (file.exists("temp2.csv")) file.remove("temp2.csv"))
+
+
 
   return(df)
 
@@ -295,10 +368,11 @@ buildDataFrameForDateCodes <- function(dateCodes) {
 #' @title getOperatingReserveAuctions
 #'
 #' @description This main function retrieves the operating reserve auction results from \url{https://www.regelleistung.net/ext/tender/}.
-#' The data contains all auctions from a given starting date till now.
+#' The data contains all auctions from a given starting date till an end date. Be aware of the weekly data and take care of the latest week. It is already in the data table of the website but there is no downloadable data available.
 #'
 #'
 #' @param date_from the starting date to retrieve all auctions till NOW in the date format DD.MM.YYYY (e.g.'07.03.2017')
+#' @param date_to the end date to retrieve all auctions. Format DD.MM.YYYY (e.g.'07.03.2017')
 #' @param productId PRL (1), SRL (2), MRL (3), sofort abschaltbare Lasten (4), schnell abschaltbare Lasten (5), Primärregelleistung NL (6)
 #'
 #' @return data.frame with the results of the auctions held from starting date till now
@@ -308,7 +382,7 @@ buildDataFrameForDateCodes <- function(dateCodes) {
 #'
 #' @export
 #'
-getOperatingReserveAuctions <- function(date_from, productId) {
+getOperatingReserveAuctions <- function(date_from, date_to, productId) {
 
   auctionsResponse <- scrape_rl_auctions(date_from, productId)
   auctionIds <- getAuctionIds(auctionsResponse)
@@ -320,10 +394,16 @@ getOperatingReserveAuctions <- function(date_from, productId) {
 
     for(j in 2:length(auctionIds)) {
 
-      response_content <- callGETforAuctionResults(auctionIds[j])
-      df <- build_df_rl_calls_auctions(response_content, "temp2.csv")
+      if(df_auctions$date_to < as.Date(date_to, "%d.%m.%Y")) {
 
-      df_auctions <- rbind(df_auctions, df)
+        response_content <- callGETforAuctionResults(auctionIds[j])
+        df <- build_df_rl_calls_auctions(response_content, "temp2.csv")
+
+        df_auctions <- rbind(df_auctions, df)
+      }
+      else {
+        break;
+      }
     }
   }
 
@@ -352,15 +432,28 @@ getOperatingReserveAuctions <- function(date_from, productId) {
 #'
 getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
 
-  # Do the POST request and retrieve the response from the server
-  r <- scrape_rl_calls(date_from, date_to, uenb_type, rl_type)
-  # Preprocess the response
-  p <- preprocess_rl_calls(r)
-  # Build up the data.frame
-  d <- build_df_rl_calls_auctions(p, "temp.csv")
+  # First split the input timeframe into processable monthly dates
+  # Then loop through the monthly timeframes and process like before.
+  dates <- getDatesArrayOfMonths(date_from, date_to)
 
-  return(d)
+  df <- data.frame()
 
+  for(e in 1:nrow(dates)) {
+
+    print(paste("POST request for timeframe: ", dates[e,1], " - ", dates[e,2], sep = ""))
+
+    # Do the POST request and retrieve the response from the server
+    r <- scrape_rl_calls(dates[e,1], dates[e,2], uenb_type, rl_type)
+    # Preprocess the response
+    p <- preprocess_rl_calls(r)
+    # Build up the data.frame
+    d <- build_df_rl_calls_auctions(p, "temp.csv")
+
+    df <- rbind(df, d)
+
+  }
+
+  return(df)
 }
 
 

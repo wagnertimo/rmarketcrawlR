@@ -33,18 +33,18 @@ preProcessOperatingReserveCalls <- function(df.calls) {
 
   library(lubridate)
 
-
-  #
-  # TODO Add the Tarif varible HT and NT
-  #
-
   # Build variable DateTime out of Date and Time (as String) and neg_MW (with a negative num) and pos_MW
   # Time takes the value of "UHRZEIT.VON". The seconds are missing so add ":00"
   df.calls$DateTime <- as.POSIXct(paste(dmy(df.calls$DATUM), paste(df.calls$UHRZEIT.VON, ":00", sep = ""), sep=" "), tz = "MET")
   df.calls$pos_MW <- df.calls$BETR..POS
   df.calls$neg_MW <- -df.calls$BETR..NEG
+  # HT is Mon - Fri 8 - 20 without bank holiday
+  # NT is else
+  # Get week day: 1 sunday 2 monday 3 tuesday 4 wednesday ... 7 saturday
+  df.calls$Tarif <- ifelse((hour(df.calls$DateTime) >= 8 & hour(df.calls$DateTime) < 20) & (wday(df.calls$DateTime) > 1 & wday(df.calls$DateTime) < 7) & !isGermanHoliday(df.calls$DateTime), "HT", "NT")
 
-  keeps <- c("DateTime", "neg_MW", "pos_MW")
+  keeps <- c("DateTime", "neg_MW", "pos_MW", "Tarif")
+  #keeps <- c("DateTime", "neg_MW", "pos_MW")
 
   return(df.calls[, keeps])
 
@@ -78,6 +78,11 @@ preprocessOperatingReserveNeeds <- function(df.needs) {
 
   df.needs$Direction <- ifelse(df.needs$MW < 0, "NEG", "POS")
 
+  # HT is Mon - Fri 8 - 20 without bank holiday
+  # NT is else
+  # Get week day: 1 sunday 2 monday 3 tuesday 4 wednesday ... 7 saturday
+  df.needs$Tarif <- ifelse((hour(df.needs$DateTime) >= 8 & hour(df.needs$DateTime) < 20) & (wday(df.needs$DateTime) > 1 & wday(df.needs$DateTime) < 7) & !isGermanHoliday(df.needs$DateTime), "HT", "NT")
+
   drops <- c("Date", "Time")
 
   return(df.needs[ , !(names(df.needs) %in% drops)])
@@ -85,6 +90,38 @@ preprocessOperatingReserveNeeds <- function(df.needs) {
 }
 
 
+#' This helper method states if the given datetime (POSIXct object) is a german bank holiday
+#'
+isGermanHoliday <- function(dateTime) {
+
+  library(timeDate)
+  library(lubridate)
+
+  bool <- FALSE
+
+  year <- year(dateTime)
+  date <- lubridate::date(dateTime)
+
+  # Epiphany(year = year)@Data == date | # 3 Könige
+  # EasterSunday(year = year)@Data == date |
+  # Pentecost(year = year)@Data == date  | # Pfingstsonntag
+  # DEChristmasEve(year = year)@Data == date |
+
+  bool <- ifelse(NewYearsDay(year = year)@Data == date |
+                 GoodFriday(year = year)@Data == date |
+                 EasterMonday(year = year)@Data == date |
+                 LaborDay(year = year)@Data == date  |
+                 DEAscension(year = year)@Data == date  |
+                 PentecostMonday(year = year)@Data == date  |
+                 DECorpusChristi(year = year)@Data == date  |
+                 DEGermanUnity(year = year)@Data == date  |
+                 AllSaints(year = year)@Data == date |
+                 ChristmasDay(year = year)@Data == date |
+                 BoxingDay(year = year)@Data == date,
+                 TRUE, FALSE)
+
+  return(bool)
+}
 
 
 #' @title aggregateXminAVGMW
@@ -156,7 +193,7 @@ getAVGXmin <- function(dataframe, xmin, direction) {
   # Create a data.frame with the mean values of the required MW in operating reserve power for every minute based on the cutted time
   dataframe.avg <- aggregate(x = dataframe$MW,
                              by = list(dataframe$cuttedTime),
-                             FUN = mean)
+                             FUN = function(x){sum(x) / 225})
   colnames(dataframe.avg) <- c("cuttedTime", paste("avg_", xmin, "min_MW_", direction, sep=""))
 
   return(dataframe.avg)

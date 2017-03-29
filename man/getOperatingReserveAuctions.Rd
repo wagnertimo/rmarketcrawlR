@@ -4,10 +4,12 @@
 \alias{getOperatingReserveAuctions}
 \title{getOperatingReserveAuctions}
 \usage{
-getOperatingReserveAuctions(date_from, productId)
+getOperatingReserveAuctions(date_from, date_to, productId)
 }
 \arguments{
 \item{date_from}{the starting date to retrieve all auctions till NOW in the date format DD.MM.YYYY (e.g.'07.03.2017')}
+
+\item{date_to}{the end date to retrieve all auctions. Format DD.MM.YYYY (e.g.'07.03.2017')}
 
 \item{productId}{PRL (1), SRL (2), MRL (3), sofort abschaltbare Lasten (4), schnell abschaltbare Lasten (5), Primärregelleistung NL (6)}
 }
@@ -16,7 +18,7 @@ data.frame with the results of the auctions held from starting date till now
 }
 \description{
 This main function retrieves the operating reserve auction results from \url{https://www.regelleistung.net/ext/tender/}.
-The data contains all auctions from a given starting date till now.
+The data contains all auctions from a given starting date till an end date. Be aware of the weekly data and take care of the latest week. It is already in the data table of the website but there is no downloadable data available.
 }
 \examples{
 getOperatingReserveAuctions('07.03.2017', '2')
