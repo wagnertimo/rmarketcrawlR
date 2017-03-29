@@ -416,7 +416,7 @@ getOperatingReserveAuctions <- function(date_from, date_to, productId) {
 
 #' @title getOperatingReserveCalls
 #'
-#' @description This main function retrieves the operating reserve calls from \url{https://www.regelleistung.net/ext/data/}. The time interval can only lay within the same month.
+#' @description This main function retrieves the operating reserve calls from \url{https://www.regelleistung.net/ext/data/}.
 #'
 #' @param date_from sets the starting date in format: DD.MM.YYYY
 #' @param date_to sets the ending date in format: DD.MM.YYYY
