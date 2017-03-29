@@ -4,7 +4,7 @@
 \alias{buildCorrectingCallsDF}
 \title{buildCorrectingCallsDF}
 \usage{
-buildCorrectingCallsDF(df.1min, df.15min.neg, df.15min.pos, df.15min.calls)
+buildCorrectingCallsDF(df.needs, df.calls)
 }
 \arguments{
 \item{df.1min}{- The data.frame with the 1min average operating reserve needs}
@@ -25,15 +25,7 @@ This method builds up the data.frame with all needed variables to correct the op
 df.needs <- getOperatingReserveNeeds("30.12.2015", "30.12.2015")
 df.calls <- getOperatingReserveCalls('30.12.2015', '30.12.2015', '4', 'SRL')
 
-df.needs.preprocessed <- preprocessOperatingReserveNeeds(df.needs)
-df.calls.preprocessed <- preProcessOperatingReserveCalls(df.calls)
-
-df.avg.15min.neg <- getAVGXmin(df.needs.preprocessed, 15, "NEG")
-df.avg.15min.pos <- getAVGXmin(df.needs.preprocessed, 15, "POS")
-
-df.1min <- aggregateXminAVGMW(df.needs.preprocessed, 1)
-
-buildCorrectingCallsDF(df.1min, df.avg.15min.neg, df.avg.15min.pos, df.calls.preprocessed)
+buildCorrectingCallsDF(df.needs, df.calls)
 
 }
 

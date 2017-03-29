@@ -266,22 +266,22 @@ getNumberOfPosOrNegIn15min <- function(dataframe) {
 #' df.needs <- getOperatingReserveNeeds("30.12.2015", "30.12.2015")
 #' df.calls <- getOperatingReserveCalls('30.12.2015', '30.12.2015', '4', 'SRL')
 #'
-#' df.needs.preprocessed <- preprocessOperatingReserveNeeds(df.needs)
-#' df.calls.preprocessed <- preProcessOperatingReserveCalls(df.calls)
-#'
-#' df.avg.15min.neg <- getAVGXmin(df.needs.preprocessed, 15, "NEG")
-#' df.avg.15min.pos <- getAVGXmin(df.needs.preprocessed, 15, "POS")
-#'
-#' df.1min <- aggregateXminAVGMW(df.needs.preprocessed, 1)
-#'
-#' buildCorrectingCallsDF(df.1min, df.avg.15min.neg, df.avg.15min.pos, df.calls.preprocessed)
+#' buildCorrectingCallsDF(df.needs, df.calls)
 #'
 #' @export
 #'
-buildCorrectingCallsDF <- function(df.1min, df.15min.neg, df.15min.pos, df.15min.calls) {
+buildCorrectingCallsDF <- function(df.needs, df.calls) {
 
   library(dplyr)
   library(magrittr)
+
+  # Calculate the 1min average operating reserve needs out of the 4sec data
+  df.1min <- aggregateXminAVGMW(s.needs, 1)
+
+  # Calculate the 15min average operating reserve needs for negative and positive power out of the 1min averages
+  df.15min.neg <- get15minAVGOff1minAVG(df.1min, "NEG")
+  df.15min.pos <- get15minAVGOff1minAVG(df.1min, "POS")
+
 
   # Create common merge variable cuttedTime
   df.1min$cuttedTime <- cut(df.1min$DateTime, breaks = paste("15", "min", sep = " "))
@@ -289,7 +289,7 @@ buildCorrectingCallsDF <- function(df.1min, df.15min.neg, df.15min.pos, df.15min
 
   t.all <- full_join(df.1min, df.15min.neg, by="cuttedTime") %>%
     full_join(df.15min.pos, by="cuttedTime") %>%
-    merge(df.15min.calls, by.x = "cuttedTime", by.y = "DateTime")
+    merge(df.calls, by.x = "cuttedTime", by.y = "DateTime")
 
   drops <- c("cuttedTime", "Tarif.y")
   t.all <- t.all[, !(names(t.all) %in% drops)]
@@ -312,46 +312,6 @@ buildCorrectingCallsDF <- function(df.1min, df.15min.neg, df.15min.pos, df.15min
 
 
 
-#' @title plotXminAVGMWvs4secMW
-#'
-#' @description This method plots the 1min average of the operating reserve needs, 15min negative and positive needs, as well as the 15min calls against the original 4sec operating reserve needs
-#'
-#' @param dataframe - data.frame with the operating reserve needs (in MW), the type ("RZBedarf"), a DateTime (POSIXct object) and the averages (1min, 15min neg. and pos.) operating reserve needs and the 15min calls.
-#'
-#' @return a line chart with the 4sec operating reserve needs (grey)...
-#'
-#' @examples
-#' dataframe <- buildCorrectingCallsDF(df.1min, df.avg.15min.neg, df.avg.15min.pos, df.calls.preprocessed)
-#' plotXminAVGMWvs4secMW(dataframe)
-#'
-#' @export
-#'
-plotAVGMWvs4secMW <- function(dataframe) {
-
-  library(ggplot2)
-
-  g2 <- ggplot(dataframe, aes(DateTime)) +
-    geom_line(aes(y = MW, colour = "MW")) +
-    geom_step(aes(y = avg_1min_MW, colour = "avg. 1min needs")) +
-    geom_step(aes(y = avg_15min_MW_NEG, colour = "avg. neg. 15min needs")) +
-    geom_step(aes(y = avg_15min_MW_POS, colour = "avg. pos. 15min needs")) +
-    geom_step(aes(y = neg_MW, colour = "avg. neg. calls")) +
-    geom_step(aes(y = pos_MW, colour = "avg. pos. calls")) +
-    scale_colour_manual(values = c("#79c5dc", "#fb7474", "#de1b1b", "#77d49c", "#5cb26c", "#ababab")) +
-    labs(x = "Date and Time", y = "Power (in MW)") +
-    ggtitle('Operating Reserve Needs') +
-    theme(plot.title = element_text(size = 20, face="bold", margin = margin(10, 0, 10, 0)),
-          axis.title.x = element_text(color="forestgreen", vjust=-0.35),
-          axis.title.y = element_text(color="cadetblue" , vjust=0.35)
-    ) +
-    scale_y_continuous(label = function(x){return(paste( x, " MW"))})
-
-  g2
-
-}
-
-
-
 
 #'
 #' MAIN FUNCTIONS
@@ -364,6 +324,7 @@ plotAVGMWvs4secMW <- function(dataframe) {
 #' @description THis function approximates a finer 1min resolution of the 15min operating reserve calls. It does this by modifying the values of the operating reserve needs which are available in a 4sec resolution.
 #'
 #' @param The data.frame of specific 4sec operating reserve needs which is used to approximate the a 1min resolution for the reserve calls.
+#' @param The data.frame with the 15min operating reserve calls
 #'
 #' @return A data.frame which approximates the 1min reserve calls
 #'
@@ -372,20 +333,38 @@ plotAVGMWvs4secMW <- function(dataframe) {
 #'
 #' @export
 #'
-approximateOperatingReserveCalls <- function(reserveNeeds) {
+approxOperatingReserveCalls <- function(reserveNeeds, reserveCalls) {
+
+  # Build up a data.frame with all relevant averages and values to approximate the 1min calls
+  r <- buildCorrectingCallsDF(reserveNeeds, reserveCalls)
+
+  #' Correction:
+  #'   standard case for POS 1min avg need: (15min call POS MW -  15min avg POS need MW) * count POS / 15
+  #'   standard case for NEG 1min avg need: (15min call NEG MW -  15min avg NEG need MW) * count NEG / 15
+
+  # 1. aggregate data.frame of 4 sec resolution in 1 min resolution
+  r$cuttedTime <- cut(r$DateTime, breaks = paste("1", "min", sep = " "))
+  r$cuttedTime <- as.POSIXct(r$cuttedTime, tz = "MET")
+
+  # Scrape out all the 1min averages of the 4sec data by using unique
+  r <- unique(r[, c("cuttedTime","avg_1min_MW", "avg_15min_MW_NEG", "avg_15min_MW_POS", "neg_MW", "pos_MW", "NEG", "POS")])
+
+  # Calculate the corrected operating need value or the new approximated 1min call
+  r$Corrected <- ifelse(df.temp$avg_1min_MW < 0, df.temp$avg_1min_MW + ((df.temp$neg_MW - df.temp$avg_15min_MW_NEG) * (15/df.temp$NEG)), df.temp$avg_1min_MW + ((df.temp$pos_M - df.temp$avg_15min_MW_POS) * (15/df.temp$POS)))
 
 
-  # 1. First Modify the incoming data.frame with extension variables to allow an easy processing
+  # TODO handle
+  # Two special cases:
+  # 1. Homogenity: only negative (positive) needs (homogenic needs) but with positive (negative ) calls (in both direction)
+  # 2. CrossingZero: With the correction negative (positive) needs are too much corrected and go positive (negative)
+  #
 
-    # a.) # Differentiate between POS (positive operating reserve power) and NEG (negative operating reserve power). Therefore add a new varibale called Direction
 
-    # b.) Differentiate between HT ("Haupttarif") and NT ("Nebentarif"). Therefore add a new varibale called Tarif
+  # Formatting
+  # Rename cuttedTime to DateTime
+  names(r)[names(r) == 'cuttedTime'] <- 'DateTime'
 
-
-
-  # 2. calculate the minutely averages and 15min averages of the reserve needs
-  # 1 Minute average: aggregate 15x 4sec values
-
+  return(r)
 
 }
 
