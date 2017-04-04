@@ -74,7 +74,9 @@ plotAVGMWvs4secMW <- function(dataframe) {
 #'
 plotCorrectedNeeds <- function(dataframe){
 
-  g2 <- ggplot(dataframe, aes(cuttedTime)) +
+  library(ggplot2)
+
+  g2 <- ggplot(dataframe, aes(DateTime)) +
     # geom_line(aes(y = MW, colour = "MW")) +
     geom_step(aes(y = avg_1min_MW, colour = "avg. 1min needs")) +
     geom_step(aes(y = avg_15min_MW_NEG, colour = "avg. neg. 15min needs")) +
@@ -93,4 +95,9 @@ plotCorrectedNeeds <- function(dataframe){
 
   g2
 }
+
+
+
+
+
 

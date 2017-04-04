@@ -26,6 +26,8 @@ scrape_rl_calls <- function(date_from, date_to, uenb_type, rl_type) {
 
   library(httr)
 
+  print(paste("[INFO]: scrape_rl_calls"))
+
   url = 'https://www.regelleistung.net/ext/data/';
 
   payload = list(
@@ -48,6 +50,8 @@ preprocess_rl_calls <- function(response_content) {
 
   library(xml2)
 
+  print(paste("[INFO]: preprocess_rl_calls"))
+
   # Preprocess the response data
   #
   # Delete the first 5 rows (unneccessary additional infos)
@@ -66,6 +70,10 @@ preprocess_rl_calls <- function(response_content) {
 # This method is used to build a data.frame with monthly date time periods because the calls can only be retrieved within a month.
 # Therefore a input time period has to be split in monthly time periods.
 getDatesArrayOfMonths <- function(d1.start, d1.end) {
+
+  library(lubridate)
+
+  print(paste("[INFO]: getDatesArrayOfMonths"))
 
   d1.start <- as.Date(d1.start, "%d.%m.%Y")
   d1.end <- as.Date(d1.end, "%d.%m.%Y")
@@ -141,6 +149,8 @@ scrape_rl_auctions <- function(date_from, productId) {
 
   library(httr)
 
+  print(paste("[INFO]: scrape_rl_auctions"))
+
   url = 'https://www.regelleistung.net/ext/tender/';
 
   payload = list(
@@ -159,6 +169,8 @@ scrape_rl_auctions <- function(date_from, productId) {
 getAuctionIds <- function(response) {
 
   library(XML)
+
+  print(paste("[INFO]: getAuctionIds"))
 
   parsedHtml <- htmlParse(content(response, "text"))
 
@@ -185,6 +197,8 @@ callGETforAuctionResults <- function(auctionId) {
 
   library(httr)
 
+  print(paste("[INFO]: callGETforAuctionResults - Called for ", auctionId))
+
   url = paste('https://www.regelleistung.net/ext/tender/results/anonymousdownload/',auctionId, sep = "");
 
   getResponse <- GET(url, verbose())
@@ -204,16 +218,18 @@ callGETforAuctionResults <- function(auctionId) {
 # This is a strange error it still works
 build_df_rl_calls_auctions <- function(response_content, fileName) {
 
+
+
   # Write a temporary csv file out of the preprocessed response data.
   # This whole approach with the temp.csv file allows to process bigger files.
   #
   # Write a temporary csv file from the char variable
   write.csv(response_content, file = fileName, eol = "\n")
 
-
-
   # This if statement builds the data.frame for the operating reserve calls
   if(fileName == "temp.csv") {
+
+    print(paste("[INFO]: build_rl_calls_auctions - Called for Reserve Calls. Read in file"))
 
     # Read in the temporary csv file
     #
@@ -229,6 +245,8 @@ build_df_rl_calls_auctions <- function(response_content, fileName) {
   }
   # This if statement builds the data.frame for the operating reserve auctions
   else if(fileName == "temp2.csv") {
+
+    print(paste("[INFO]: build_rl_calls_auctions - Called for Reserve Auctions. Read in file"))
 
     df <- read.csv(file = "temp2.csv",
                    header = TRUE,
@@ -279,14 +297,25 @@ build_df_rl_calls_auctions <- function(response_content, fileName) {
 # The date code is specified by the year and month e.g. "201612". All the files have a standard naming.
 scrape_rl_need_month <- function(date_code) {
 
+  print(paste("[INFO]: scrape_rl_need_month - Scrape data for ", date_code))
+
   # Create a temporary file to store the downloaded zip file in it
   temp <- tempfile()
   url = paste('https://www.transnetbw.de/files/bis/srlbedarf/', date_code, '_SRL_Bedarf.zip', sep = "");
+
+  print(paste("[INFO]: scrape_rl_need_month - Download data for ", date_code))
+
   download.file(url, temp)
+
+  print(paste("[INFO]: scrape_rl_need_month - Read csv for ", date_code))
+
   # Unzip in read in the csv file into a data.frame
   dft <-  read.csv(unz(temp, paste(date_code, "_SRL_Bedarf.csv", sep = "")), , header = FALSE, sep = ",", dec = ".")
   # Since there are no headers, include appropriate header names
   colnames(dft) <- c("Date", "Time", "Type", "MW")
+
+  print(paste("[INFO]: scrape_rl_need_month - Delete temp file for ", date_code))
+
   # delete the temporary file
   rm(temp)
 
@@ -308,6 +337,8 @@ preceedingZerosForMonths <- function(month) {
 # This function builds up an array containing all the date codes needed to build the whole data.frame.
 getDateCodesArray <- function(date_from, date_to) {
 
+  print(paste("[INFO]: getDateCodesArray"))
+
   # Init
   dateCodes <- c()
   date_to_month <- strsplit(date_to, "\\.")[[1]][2]
@@ -317,10 +348,15 @@ getDateCodesArray <- function(date_from, date_to) {
   date_month <- strsplit(date_from, "\\.")[[1]][2]
   date_year <- strsplit(date_from, "\\.")[[1]][3]
 
+  print(paste("[INFO]: getDateCodesArray - Building the dateCodes in while loop"))
+
   # Fill the dateCodes array by counting up the number of months (and year if there is a year change) since the end date (date_to_code) is reached
   repeat{
     # Build up the date code
     dateCode <- paste(date_year, date_month, sep = "")
+
+    print(paste("[INFO]: Building the dateCode ", dateCode))
+
     # Append it to the result array
     dateCodes <- c(dateCodes, dateCode)
     # Check if end date is reached
@@ -332,8 +368,9 @@ getDateCodesArray <- function(date_from, date_to) {
     if (date_month == "12") {
       date_year <- toString((as.integer(date_year) + 1))
     }
-    # Don't forget the receeding zeros!
+    # Don't forget the preceeding zeros!
     date_month <- preceedingZerosForMonths(toString((as.integer(date_month) + 1) %% 12))
+    date_month <- ifelse(date_month == "00","12", date_month)
   }
 
   return(dateCodes)
@@ -342,9 +379,12 @@ getDateCodesArray <- function(date_from, date_to) {
 # This method uses all the date codes within the specified time period to merge the individual data.frames together
 buildDataFrameForDateCodes <- function(dateCodes) {
 
+  print(paste("[INFO]: buildDataFrameForDateCodes - Looping through dateCodes to scrape data"))
+
   # Init
   dfall <- data.frame()
   for(i in 1:length(dateCodes)){
+
     df <- scrape_rl_need_month(dateCodes[i])
     dfall <- rbind(dfall,df)
   }
@@ -384,8 +424,12 @@ buildDataFrameForDateCodes <- function(dateCodes) {
 #'
 getOperatingReserveAuctions <- function(date_from, date_to, productId) {
 
+  print(paste("[INFO]: Called getOperatingReserveAuctions"))
+
   auctionsResponse <- scrape_rl_auctions(date_from, productId)
   auctionIds <- getAuctionIds(auctionsResponse)
+
+  print(paste("[INFO]: getOperatingReserveAuctions - GET request and build of auctions"))
 
   response_content <- callGETforAuctionResults(auctionIds[1])
   df_auctions <- build_df_rl_calls_auctions(response_content, "temp2.csv")
@@ -432,6 +476,8 @@ getOperatingReserveAuctions <- function(date_from, date_to, productId) {
 #'
 getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
 
+  print(paste("[INFO]: Called getOperatingReserveCalls"))
+
   # First split the input timeframe into processable monthly dates
   # Then loop through the monthly timeframes and process like before.
   dates <- getDatesArrayOfMonths(date_from, date_to)
@@ -440,7 +486,7 @@ getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
 
   for(e in 1:nrow(dates)) {
 
-    print(paste("POST request for timeframe: ", dates[e,1], " - ", dates[e,2], sep = ""))
+    print(paste("[INFO] getOperatinReserveCalls - POST request for timeframe: ", dates[e,1], " - ", dates[e,2], sep = ""))
 
     # Do the POST request and retrieve the response from the server
     r <- scrape_rl_calls(dates[e,1], dates[e,2], uenb_type, rl_type)
@@ -474,8 +520,13 @@ getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
 #'
 getOperatingReserveNeeds <- function(startDate, endDate) {
 
+  print(paste("[INFO]: Called getOperatingReserveNeeds"))
+
   # Extract all the dataCodes to build the whole data.frame by downloading the zip file
   df <- buildDataFrameForDateCodes(getDateCodesArray(startDate, endDate))
+
+  print(paste("[INFO]: getOperatingReserveNeeds - Subset the data.frame"))
+
   # Subset the whole data.frame to the given time period
   df <- subset(df, Date >= as.Date(startDate, format = "%d.%m.%Y") & Date <= as.Date(endDate, format = "%d.%m.%Y"))
 

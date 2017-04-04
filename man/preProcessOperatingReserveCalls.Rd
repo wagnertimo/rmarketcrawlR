@@ -33,4 +33,3 @@ Some useful keyboard shortcuts for package authoring:
 
 HELPER FUNCTIONS
 }
-

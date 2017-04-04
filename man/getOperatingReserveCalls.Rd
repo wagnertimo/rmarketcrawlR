@@ -25,4 +25,3 @@ This main function retrieves the operating reserve calls from \url{https://www.r
 getOperatingReserveCalls('07.03.2017', '14.03.2017', '4', 'SRL')
 
 }
-

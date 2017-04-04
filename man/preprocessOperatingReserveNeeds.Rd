@@ -15,4 +15,3 @@ a modified data.frame containing the Type ("RZBedarf"), DateTime (as POSIXct obj
 \description{
 This method transforms the original retrieved operating reserve needs into a nicer data.frame.
 }
-

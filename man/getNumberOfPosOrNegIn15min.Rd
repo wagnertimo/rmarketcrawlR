@@ -7,10 +7,10 @@
 getNumberOfPosOrNegIn15min(dataframe)
 }
 \arguments{
-\item{dataframe}{- the data.frame with preprocessed operating reserve needs and calls and their averages}
+\item{dataframe}{- THe input data.frame has to have already a cuttedTime variable with 15min sections! (trying to minimize the amount of cut operations due to its computational intensivity)}
 }
 \value{
-a data.frame with corresponding counting values for NEG and POS
+a data.frame with corresponding counting values for NEG and POS and adds additionally a Direction variable (NEG, POS)
 }
 \description{
 This method adds the counts of NEG and POS 1min averages for every 15min section.
@@ -19,4 +19,3 @@ This method adds the counts of NEG and POS 1min averages for every 15min section
 No example! This function is included in the buildCorrectingCallsDF function.
 
 }
-

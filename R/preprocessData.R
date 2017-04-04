@@ -31,19 +31,13 @@
 #'
 preProcessOperatingReserveCalls <- function(df.calls) {
 
-  library(lubridate)
-
   # Build variable DateTime out of Date and Time (as String) and neg_MW (with a negative num) and pos_MW
   # Time takes the value of "UHRZEIT.VON". The seconds are missing so add ":00"
   df.calls$DateTime <- as.POSIXct(paste(dmy(df.calls$DATUM), paste(df.calls$UHRZEIT.VON, ":00", sep = ""), sep=" "), tz = "MET")
   df.calls$pos_MW <- df.calls$BETR..POS
   df.calls$neg_MW <- -df.calls$BETR..NEG
-  # HT is Mon - Fri 8 - 20 without bank holiday
-  # NT is else
-  # Get week day: 1 sunday 2 monday 3 tuesday 4 wednesday ... 7 saturday
-  df.calls$Tarif <- ifelse((hour(df.calls$DateTime) >= 8 & hour(df.calls$DateTime) < 20) & (wday(df.calls$DateTime) > 1 & wday(df.calls$DateTime) < 7) & !isGermanHoliday(df.calls$DateTime), "HT", "NT")
 
-  keeps <- c("DateTime", "neg_MW", "pos_MW", "Tarif")
+  keeps <- c("DateTime", "neg_MW", "pos_MW")
   #keeps <- c("DateTime", "neg_MW", "pos_MW")
 
   return(df.calls[, keeps])
@@ -65,18 +59,12 @@ preProcessOperatingReserveCalls <- function(df.calls) {
 #'
 preprocessOperatingReserveNeeds <- function(df.needs) {
 
-  library(lubridate)
-
   # Build up a Date-Time object POSIXct for easier handling. Set the timezone to Middle Europe Time
   # format: e.g. 2017-30-12 00:00:04
   df.needs$DateTime <- as.POSIXct(paste(df.needs$Date, df.needs$Time, sep=" "), tz = "MET")
 
-  df.needs$Direction <- ifelse(df.needs$MW < 0, "NEG", "POS")
-
-  # HT is Mon - Fri 8 - 20 without bank holiday
-  # NT is else
-  # Get week day: 1 sunday 2 monday 3 tuesday 4 wednesday ... 7 saturday
-  df.needs$Tarif <- ifelse((hour(df.needs$DateTime) >= 8 & hour(df.needs$DateTime) < 20) & (wday(df.needs$DateTime) > 1 & wday(df.needs$DateTime) < 7) & !isGermanHoliday(df.needs$DateTime), "HT", "NT")
+  # Not sure when and if needed. This variable is redundant
+  # df.needs$Direction <- ifelse(df.needs$MW < 0, "NEG", "POS")
 
   drops <- c("Date", "Time", "Type")
 
@@ -85,8 +73,31 @@ preprocessOperatingReserveNeeds <- function(df.needs) {
 }
 
 
-#' This helper method states if the given datetime (POSIXct object) is a german bank holiday
+
+
+#' @title addTarif
 #'
+#' @description This method adds an additional variable called Tarif to the already preprocessed input data.frame which contains the right DateTime (@seealso preprocessOperatingReserveNeeds or preprocessOperatingReserveCalls)
+#' @param df - a data.frame which has to be preprocessed and additional information about the tarif is needed
+#' @return the input data.frame with the additional variable of the tarif
+#'
+#' @export
+#'
+addTarif <- function(df) {
+
+  library(lubridate)
+
+  # HT is Mon - Fri 8 - 20 without bank holiday
+  # NT is else
+  # Get week day: 1 sunday 2 monday 3 tuesday 4 wednesday ... 7 saturday
+  df$Tarif <- ifelse((hour(df$DateTime) >= 8 & hour(df$DateTime) < 20) & (wday(df$DateTime) > 1 & wday(df$DateTime) < 7) & !isGermanHoliday(df$DateTime), "HT", "NT")
+
+  return(df)
+}
+
+
+
+#' This helper method states if the given datetime (POSIXct object) is a german bank holiday. It is used in @seealso addTarif
 isGermanHoliday <- function(dateTime) {
 
   library(timeDate)
@@ -121,14 +132,16 @@ isGermanHoliday <- function(dateTime) {
 }
 
 
+
+
 #' @title aggregateXminAVGMW
 #'
-#' @description This method averages the data.frame of the operating reserve needs on a x minute time frame (e.g. 1 minute)
+#' @description This method averages the data.frame of the operating reserve needs on a X minute time frame (e.g. 1 minute) from the input needs (4sec resolution).
 #'
 #' @param df.needs - the data.frame containing the operating reserve needs (in MW), a Date (as String) and a Time (as String) variable. As well as type ("RZBedarf")
 #' @param xmin - a timeframe in minutes to build the average values
 #'
-#' @return data.frame with the operating reserve needs (in MW), the type ("RZBedarf"), a DateTime (POSIXct object) and the average operating reserve need value of the x min time window
+#' @return data.frame with the Xmin (normally 1min) DateTime (POSIXct object) and the average operating reserve need value of the Xmin time window
 #'
 #' @examples
 #' df.needs <- getOperatingReserveNeeds("30.12.2015", "30.12.2015")
@@ -138,24 +151,22 @@ isGermanHoliday <- function(dateTime) {
 #'
 aggregateXminAVGMW <- function(df.needs, xmin) {
 
+  print(paste("[INFO]: aggregateXminAVGMW - Cut time"))
+
   # Cut the Date-Times into Minutes such that every 4sec observation belongs to a bigger group of minutes
   df.needs$cuttedTime <- cut(df.needs$DateTime, breaks = paste(xmin, "min", sep = " "))
   df.needs$cuttedTime <- as.POSIXct(df.needs$cuttedTime, tz = "MET")
+
+  print(paste("[INFO]: aggregateXminAVGMW - Calculate average"))
 
   # Create a data.frame with the mean values of the required MW in operating reserve power for every minute based on the cutted time
   df.needs.avg <- aggregate(x = df.needs$MW,
                             by = list(df.needs$cuttedTime),
                             FUN = mean)
   # Modify/format the new average data.frame
-  colnames(df.needs.avg) <- c("cuttedTime", paste("avg_", xmin, "min_MW", sep=""))
-  df.needs.avg$cuttedTime <- as.POSIXct(df.needs.avg$cuttedTime, tz = "MET")
+  colnames(df.needs.avg) <- c("DateTime", paste("avg_", xmin, "min_MW", sep=""))
 
-  # Merge the average values with the original data.frame by the cuttedTime
-  df <- merge(df.needs, df.needs.avg, by = "cuttedTime")
-
-  drops <- c("cuttedTime","Date", "Time")
-
-  return(df[ , !(names(df) %in% drops)])
+  return(df.needs.avg)
 }
 
 
@@ -165,8 +176,8 @@ aggregateXminAVGMW <- function(df.needs, xmin) {
 #'
 #' @description This method takes a data.frame of 1 min average values of operating reserve needs (@seealso aggregateXminAVGMW) and calculates the average values of a specific time window.
 #'
-#' @param dataframe - the data.frame with operating reserve needs (already preprocessed)
-#' @param xmin - the time window for which the average should be calculated (e.g. 15)
+#' @param dataframe - the data.frame with operating reserve needs (already preprocessed) and cuttedTime variable 15min is passed in (save computation time!)
+#' @param xmin - the time window for which the average should be calculated (should be 15)
 #' @param direction - specifies the positive or negative operating reserve need
 #'
 #' @return a data.frame with corresponding average values on the given time window ("cuttedTime")
@@ -178,30 +189,52 @@ aggregateXminAVGMW <- function(df.needs, xmin) {
 #'
 #' @export
 #'
-get15minAVGOff1minAVG <- function(dataframe, direction) {
+get15minAVGOf1minAVG <- function(dataframe, direction) {
+
+  # print(paste("[INFO]: get15minAVGOf1minAVG for direction ", direction, " - Cut time and build 15min blocks"))
 
   # Sample down the 1min avg values from the 4sec operating reserve need data
   # Choose only the 4sec DateTime and the 1 min average need
-  dataframe <- dataframe[, c("DateTime","avg_1min_MW", "Tarif")]
+  # dataframe <- dataframe[, c("DateTime","avg_1min_MW", "Tarif")]
   # Cut the 4sec DateTime into 1 minute sections
-  dataframe$DateTime <- as.POSIXct(cut(dataframe$DateTime, breaks = "1 min"), tz = "MET")
+  # dataframe$DateTime <- as.POSIXct(cut(dataframe$DateTime, breaks = "1 min"), tz = "MET")
   # Only let 1 of the 15 1 min avg values remaining
-  dataframe <- unique(dataframe)
+  # dataframe <- unique(dataframe)
 
   # Build the 15min blocks
-  dataframe$cuttedTime <- cut(dataframe$DateTime, breaks = "15 min")
-  dataframe$cuttedTime <- as.POSIXct(dataframe$cuttedTime, tz = "MET")
+  # dataframe$cuttedTime <- cut(dataframe$DateTime, breaks = "15 min")
+  # dataframe$cuttedTime <- as.POSIXct(dataframe$cuttedTime, tz = "MET")
 
   # filter the operating reserve power direction
-  ifelse(direction == "NEG", dataframe <- dataframe[dataframe$avg_1min_MW < 0,], dataframe <- dataframe[dataframe$avg_1min_MW >= 0,])
+  ifelse(direction == "NEG", dataframe2 <- dataframe[dataframe$avg_1min_MW < 0,], dataframe2 <- dataframe[dataframe$avg_1min_MW >= 0,])
 
-  # Create a data.frame with the mean values of the required MW in operating reserve power for every minute based on the cutted time
-  dataframe.avg <- aggregate(x = dataframe$avg_1min_MW,
-                             by = list(dataframe$cuttedTime),
-                             FUN = function(x){sum(x) / 15})
-  colnames(dataframe.avg) <- c("cuttedTime", paste("avg_15min_MW_", direction, sep=""))
+  # In the case of pure homogenity (only POS direction or only NEG) then the dataframe is empty
+  if(nrow(dataframe2) != 0){
 
-  return(dataframe.avg)
+    print(paste("[INFO]: get15minAVGOf1minAVG for direction ", direction, " - calculate average"))
+
+    # Create a data.frame with the mean values of the required MW in operating reserve power for every minute based on the cutted time
+    df <- aggregate(x = dataframe2$avg_1min_MW,
+                               by = list(dataframe2$cuttedTime),
+                               FUN = function(x){sum(x) / 15})
+    colnames(df) <- c("cuttedTime", paste("avg_15min_MW_", direction, sep=""))
+
+    # Fill up the missing 15min sections with 0s. This can happen if some homogene 15min sections are in dataframe2
+    #t <- data.frame(unique(dataframe$cuttedTime), 0)
+    #colnames(t) <- c("cuttedTime", paste("avg_15min_MW_", direction, sep=""))
+    #print(" T T  : ")
+    #print(t)
+
+  }
+  else {
+    # For pure homogenity fill the dataframe with 0s for the avg value. Number of 0s equals nrows of the input data.frame
+    df <- data.frame(unique(dataframe$cuttedTime), 0)
+    colnames(df) <- c("cuttedTime", paste("avg_15min_MW_", direction, sep=""))
+  }
+
+  #print(df)
+
+  return(df)
 }
 
 
@@ -210,9 +243,9 @@ get15minAVGOff1minAVG <- function(dataframe, direction) {
 #'
 #' @description This method adds the counts of NEG and POS 1min averages for every 15min section.
 #'
-#' @param dataframe - the data.frame with preprocessed operating reserve needs and calls and their averages
+#' @param dataframe - THe input data.frame has to have already a cuttedTime variable with 15min sections! (trying to minimize the amount of cut operations due to its computational intensivity)
 #'
-#' @return a data.frame with corresponding counting values for NEG and POS
+#' @return a data.frame with corresponding counting values for NEG and POS and adds additionally a Direction variable (NEG, POS)
 #'
 #' @examples
 #' No example! This function is included in the buildCorrectingCallsDF function.
@@ -225,87 +258,135 @@ getNumberOfPosOrNegIn15min <- function(dataframe) {
   library(tidyr)
   library(magrittr)
 
+  # print(paste("[INFO]: getNumberOfPosOrNegIn15min - Cut time in 15min blocks"))
+
   # Cut the Date-Times into 15 Minutes section and format it in a Date (POSIXct) object
-  dataframe$cuttedTime <- cut(dataframe$DateTime, breaks = paste("15", "min", sep = " "))
-  dataframe$cuttedTime <- as.POSIXct(dataframe$cuttedTime, tz = "MET")
+  # dataframe$cuttedTime <- cut(dataframe$DateTime, breaks = paste("15", "min", sep = " "))
+  # dataframe$cuttedTime <- as.POSIXct(dataframe$cuttedTime, tz = "MET")
 
   # Scrape out all the 1min averages of the 4sec data by using unique
-  df.temp <- unique(dataframe[, c("cuttedTime","avg_1min_MW")])
+  # df.temp <- unique(dataframe[, c("cuttedTime","avg_1min_MW")])
   # Add a Directions column for later use. Being able to group
-  df.temp$Direction <- as.factor(ifelse(df.temp$avg_1min_MW < 0, "NEG", "POS"))
+  dataframe$Direction <- as.factor(ifelse(dataframe$avg_1min_MW < 0, "NEG", "POS"))
 
-  # Goal now to count for every 15 minute sections seperatly the NEG and POS 1min averages
+  print(paste("[INFO]: getNumberOfPosOrNegIn15min - Group by and counting"))
+
+  # Goal now to count for every 15 minute sections seperatly the NEG and POS averages from the 1min data
   # Use piping statements for convenience. Group by the 15min sections and the NEG and POS and count their NEG and POS appereance.
-  test <- df.temp %>%
+  test <- dataframe %>%
     group_by(cuttedTime, Direction) %>%
     summarise(n= n())
 
+  print(paste("[INFO]: getNumberOfPosOrNegIn15min - Reshaping input data.frame"))
+
   # tidyr function spread reshapes that counting table to be able to merge it with the input data.frame
   test <- spread(test, Direction, n)
+  test[is.na(test)] <- 0
 
-  r <- merge(dataframe, test, by.x = "cuttedTime", by.y = "cuttedTime")
+  # If there is no NEG in all the observations --> pure homogenity, then add a zero column for NEG. For POS vice versa.
+  invisible(if(!("NEG" %in% colnames(test))) test$NEG <- 0)
+  invisible(if(!("POS" %in% colnames(test))) test$POS <- 0)
 
-  # skip the cuttedTime Variable --> not needed anymore
-  return(r[, -1])
+  print(paste("[INFO]: getNumberOfPosOrNegIn15min - Mmerging with input data.frame"))
+
+  r <- merge(dataframe, test, by = "cuttedTime")
+  # If homogenity is the case then there are na entries. Therefore change them to 0
+  # Throws arrow if only one (NEG or POS) can be count --> pue Homogenity for all observations(15min sections)
+  # r[is.na(r)] <- 0
+
+  # Pass the 15min cuttedTime Variable through. WIll be needed for further operations on the dataset. Saves computation time.
+  return(r)
 }
 
 
 
-#' @title buildCorrectingCallsDF
+
+
+#' @title calcHomogenityCorrectness
 #'
-#' @description This method builds up the data.frame with all needed variables to correct the operating reserve needs power for approximating the calls.
+#' @description Takes as input a combined minutely data.frame with 15min calls and 1 min avg of needs as well as the counts of negative and positive needs within 15min. It then updates the 1min avg need and NEG and POS values based on the homogenity. NOTE: The warnings appear when in normal cases there is no smallest absolute value. The x variable becomes "na". That is the warning
 #'
-#' @param df.1min - The data.frame with the 1min average operating reserve needs
-#' @param df.15min.neg - The data.frame with the 15min average negative operating reserve needs
-#' @param df.15min.pos - The data.frame with the 15min average positive operating reserve needs
-#' @param df.15min.calls - The data.frame with the 15min operating reserve calls (both negative and positive. Already preprocessed)
+#' @param dataframe - dataframe with 15min neg and pos calls, 1min avg needs, NEG and POS counts and cuttedTime based on 15min.
 #'
-#' @return A complete data.frame with all needed variables for correcting the operating reserve needs and approximating the calls.
-#'
-#' @examples
-#' df.needs <- getOperatingReserveNeeds("30.12.2015", "30.12.2015")
-#' df.calls <- getOperatingReserveCalls('30.12.2015', '30.12.2015', '4', 'SRL')
-#'
-#' buildCorrectingCallsDF(df.needs, df.calls)
+#' @return An updated dataframe where the NEG and POS counts in the homogenity cases are modified to 14/1 (from 15/0) and the smallest absolute value is updated to 0.
 #'
 #' @export
 #'
-buildCorrectingCallsDF <- function(df.needs, df.calls) {
+calcHomogenityCorrectness <- function(dataframe) {
+
+  #
+  # POSSIBLE PROBLEM: WHAT IF MORE EQUAL SMALLEST ABSOLUTE VALUES
+  #
 
   library(dplyr)
-  library(magrittr)
 
-  # Calculate the 1min average operating reserve needs out of the 4sec data
-  df.1min <- aggregateXminAVGMW(s.needs, 1)
+  print(paste("[INFO]: calcHomogenityCorrectness - Find the homogenity cases and its smallest absolute value"))
 
-  # Calculate the 15min average operating reserve needs for negative and positive power out of the 1min averages
-  df.15min.neg <- get15minAVGOff1minAVG(df.1min, "NEG")
-  df.15min.pos <- get15minAVGOff1minAVG(df.1min, "POS")
+  # Approach:
+  # Identify the homogenity cases of the input data.frame --> NEG (POS) count is 15 (only NEG or POS 1min avg needs) and the 15min call is positive (negative).
+  h.special <- dataframe[(dataframe$NEG == 15 & dataframe$pos_MW > 0) | (dataframe$POS == 15 & dataframe$neg_MW < 0) ,]
+
+  # h.special is empty if there is no homogenity case. In that case, return the input data.frame with $Homo_NEG = 0and $Homo_POS = 0
+  if(nrow(h.special) != 0) {
+
+    # Compute the absolute minimum of the special cases for every 15min section
+    # function(x){ifelse(x < 0, max(x), min(x) )} --> does not really work --> x.1 .... x.15 variables created
+    # Trying with the formula expression seems to work better
+    h.min <- aggregate(avg_1min_MW ~ cuttedTime, h.special, function(x) x[which.min(abs(x))])
+
+    colnames(h.min) <- c("cuttedTime", "x")
+
+    # Merge the original dataframe with the minimum values
+    dataframe <- left_join(dataframe, h.min, by = c("cuttedTime" = "cuttedTime"))
+
+    print(paste("[INFO]: calcHomogenityCorrectness - Update the NEG and POS and 1min avg values"))
+
+    # 2. Now update the 1min avg needs value such that the smallest absolute value gets the 0 value and the NEG and POS counts get 14/1
+    dataframe$Homo_NEG <- 0
+    dataframe$Homo_POS <- 0
+
+    for(i in 1:nrow(dataframe)) {
+
+      # If there is negative Homogenity
+      if(dataframe[i,]$NEG == 15 & dataframe[i,]$pos_MW > 0) {
+
+        dataframe[i,]$Homo_NEG <- 1
+        dataframe[i,]$NEG <- dataframe[i,]$NEG - 1 # 14 hardcoded also a possibility
+        dataframe[i,]$POS <- dataframe[i,]$POS + 1 # 1 hardcoded also a possibility
+
+        # If the minimal absolute value is reached
+        if(dataframe[i,]$avg_1min_MW == dataframe[i,]$x) {
+          dataframe[i,]$avg_1min_MW <- 0;
+        }
+
+      }
+      # If there is positive Homogenity
+      else if(dataframe[i,]$POS == 15 & dataframe[i,]$neg_MW < 0) {
+
+        dataframe[i,]$Homo_POS <- 1
+        dataframe[i,]$POS <- dataframe[i,]$POS - 1 # 14 hardcoded also a possibility
+        dataframe[i,]$NEG <- dataframe[i,]$NEG + 1 # 1 hardcoded also a possibility
+
+        # If the minimal absolute value is reached
+        if(dataframe[i,]$avg_1min_MW == dataframe[i,]$x) {
+          dataframe[i,]$avg_1min_MW <- 0;
+        }
+
+      }
+    }
+
+    # Get rid of X variable, the smallest absolute value. Not needed anymore
+    dataframe <- dataframe[, !(names(dataframe) %in% c("x"))]
+
+  }
+  else {
+
+    dataframe$Homo_NEG <-  0
+    dataframe$Homo_POS <-  0
+  }
 
 
-  # Create common merge variable cuttedTime
-  df.1min$cuttedTime <- cut(df.1min$DateTime, breaks = paste("15", "min", sep = " "))
-  df.1min$cuttedTime <- as.POSIXct(df.1min$cuttedTime, tz = "MET")
-
-  t.all <- full_join(df.1min, df.15min.neg, by="cuttedTime") %>%
-    full_join(df.15min.pos, by="cuttedTime") %>%
-    merge(df.calls, by.x = "cuttedTime", by.y = "DateTime")
-
-  drops <- c("cuttedTime", "Tarif.y")
-  t.all <- t.all[, !(names(t.all) %in% drops)]
-  # Now also add the counters of 1min averages for NEG and POS in every 15min section
-  t.all <- getNumberOfPosOrNegIn15min(t.all)
-
-  # Rename the Tarif.x column name which was created in fact of the merge of df.1min and df.15min.calls
-  names(t.all)[names(t.all) == 'Tarif.x'] <- 'Tarif'
-
-  #
-  # TODO: ADD THE SPECIAL CASE OF HOMOGENITY. LOOK IF CALLS ARE POSITIVE (OR NEGATIVE) BUT NEEDS ARE ALL NEGATIVE (OR POSITIVE)
-  #       --> add a new variable 1 or 0 special case (true or false). And if true, add the closes MW
-  #
-
-  return(t.all)
-
+  return(dataframe)
 }
 
 
@@ -317,60 +398,118 @@ buildCorrectingCallsDF <- function(df.needs, df.calls) {
 #' MAIN FUNCTIONS
 #'
 
-
-
-#' @title approximateOperatingReserveCalls
+#' @title approximateCalls
 #'
-#' @description THis function approximates a finer 1min resolution of the 15min operating reserve calls. It does this by modifying the values of the operating reserve needs which are available in a 4sec resolution.
+#' @description This method builds the data.frame with all needed variables to correct the operating reserve needs power for approximating the calls.
 #'
-#' @param The data.frame of specific 4sec operating reserve needs which is used to approximate the a 1min resolution for the reserve calls.
-#' @param The data.frame with the 15min operating reserve calls
+#' @param reserveNeeds - The preprocessed operating reserve needs (@seealso preprocessOperatingReserveNeeds)
+#' @param reserveCalls - The preprocessed operating reserve calls (@seealso preprocessOperatingReserveCalls)
 #'
-#' @return A data.frame which approximates the 1min reserve calls
+#' @return A complete data.frame with all needed variables for correcting the operating reserve needs and approximating the calls.
 #'
 #' @examples
-#' approximateOperatingReserveCalls(operatingReserveNeeds)
+#' df.needs <- getOperatingReserveNeeds("30.12.2015", "30.12.2015")
+#' df.calls <- getOperatingReserveCalls('30.12.2015', '30.12.2015', '6', 'SRL')
+#'
+#' reserveCalls <- preProcessOperatingReserveCalls(df.calls)
+#' reserveNeeds <- preprocessOperatingReserveNeeds(df.needs)
+#'
+#' approximateCalls(reserveNeeds, reserveCalls)
 #'
 #' @export
 #'
-approxOperatingReserveCalls <- function(reserveNeeds, reserveCalls) {
+approximateCalls <- function(reserveNeeds, reserveCalls) {
 
-  # Build up a data.frame with all relevant averages and values to approximate the 1min calls
-  r <- buildCorrectingCallsDF(reserveNeeds, reserveCalls)
+  library(dplyr)
 
-  #' Correction:
-  #'   standard case for POS 1min avg need: (15min call POS MW -  15min avg POS need MW) * count POS / 15
-  #'   standard case for NEG 1min avg need: (15min call NEG MW -  15min avg NEG need MW) * count NEG / 15
+  print(paste("[INFO]: Called approximateCalls"))
 
-  # 1. aggregate data.frame of 4 sec resolution in 1 min resolution
-  r$cuttedTime <- cut(r$DateTime, breaks = paste("1", "min", sep = " "))
-  r$cuttedTime <- as.POSIXct(r$cuttedTime, tz = "MET")
+  # Calculate the 1min average operating reserve needs out of the 4sec data
+  df.needs.1min <- aggregateXminAVGMW(df.needs, 1)
 
-  # Scrape out all the 1min averages of the 4sec data by using unique
-  r <- unique(r[, c("cuttedTime","avg_1min_MW", "avg_15min_MW_NEG", "avg_15min_MW_POS", "neg_MW", "pos_MW", "NEG", "POS")])
+  print(paste("[INFO]: approximateCalls - Cut the 15min sections"))
 
-  # Calculate the corrected operating need value or the new approximated 1min call
-  r$Corrected <- ifelse(df.temp$avg_1min_MW < 0, df.temp$avg_1min_MW + ((df.temp$neg_MW - df.temp$avg_15min_MW_NEG) * (15/df.temp$NEG)), df.temp$avg_1min_MW + ((df.temp$pos_M - df.temp$avg_15min_MW_POS) * (15/df.temp$POS)))
+  # Join with 15min calls
+  # Cut 1min avg needs into 15min for join operation
+  df.needs.1min$cuttedTime <- cut(df.needs.1min$DateTime, breaks = paste("15", "min", sep = " "))
+  df.needs.1min$cuttedTime <- as.POSIXct(df.needs.1min$cuttedTime, tz = "MET")
+
+  # merge the 1min needs and 15min calls based on the cuttedTime
+  t.all <-  merge(df.needs.1min, df.calls, by.x = "cuttedTime", by.y = "DateTime")
 
 
-  # TODO handle
-  # Two special cases:
-  # 1. Homogenity: only negative (positive) needs (homogenic needs) but with positive (negative ) calls (in both direction)
-  # 2. CrossingZero: With the correction negative (positive) needs are too much corrected and go positive (negative)
+  # Add the numbers of negative and positive needs within 15min to the data.frame
+  t.all <- getNumberOfPosOrNegIn15min(t.all)
+
+  #print(t.all)
+
+  # Consider 1. special case: Homogenity
+  # Now check for homogenity cases and modify the 1min avg values and numbers of NEG and POS
+  # If homogenity is the case then set the smallest absolute value of 1min avg need to zero and the 15/0 counts to 14/1. The rest stays the same.
+
+
+  h.c <- calcHomogenityCorrectness(t.all)
+
+  print(h.c)
+
+  # Now it is time to compute the 15min averages for the needs and make the correction calculation
+  # Calculate the 15min average operating reserve needs for negative and positive power out of the 1min averages
+  h.c.15min.neg <- get15minAVGOf1minAVG(h.c, "NEG")
+  h.c.15min.pos <- get15minAVGOf1minAVG(h.c, "POS")
+
+
+  # Merge everything together by the passed through cuttedTime variable (cutting time is computational intensive!!)
+  # Left Join neccessary. In case of negative (positive) homogene 15min sections the averages of the positive (negative) values are missing NA
+  res <- left_join(h.c, h.c.15min.neg, by="cuttedTime")%>%
+    left_join(h.c.15min.pos, by = "cuttedTime")
+  # set the missing homogene averages to 0
+  res[is.na(res)] <- 0
+
+
+  print(res)
+
+  print(paste("[INFO]: approximateCalls - Calculate the corrected need values"))
+
+  # Init the Correction variable
+  res$Corrected <- 0
+
+  for(i in 1:nrow(res)) {
+
+    # Be aware of the case that there is homogenity and the smallest absolute value is zero --> then the if statement (<0) won't be activated.
+    # THerefore a special else statement for positive homogenity is needeed
+    if((res[i,]$Homo_NEG == 0 & res[i,]$Homo_POS == 0) | (res[i,]$Homo_NEG == 1 & res[i,]$Homo_POS == 0) | (res[i,]$Homo_NEG == 0 & res[i,]$Homo_POS == 1 & res[i,]$avg_1min_MW != 0)) {
+
+      # Calculate the corrected operating need value or the new approximated 1min call
+      res[i, ]$Corrected <- ifelse(res[i,]$avg_1min_MW < 0, res[i,]$avg_1min_MW + ((res[i,]$neg_MW - res[i,]$avg_15min_MW_NEG) * (15/res[i,]$NEG)),
+                            res[i,]$avg_1min_MW + ((res[i,]$pos_MW - res[i,]$avg_15min_MW_POS) * (15/res[i,]$POS)))
+
+
+      print(paste("NORMAL CASE: Corrected value for", i, " obs. of ", res[i,]$avg_1min_MW, " is --> ", res[i, ]$Corrected))
+    }
+    else {
+      # a positive homogenity case occured
+
+      # Correction for the special case homogenity: The 0 value marks the smallest absolute value.
+      # For positive homogenity, the 0 value is corrected by the opposite avgs and counts (NEG)
+      # THis else statement is needed because the ifelse() above doesn#t trigger the NEG calculation because of the < 0 expression
+      res[i, ]$Corrected <- if(res[i,]$Homo_POS == 1) res[i,]$neg_MW  * 15
+
+      print(paste("SPECIAL CASE: SMALLEST VALUE REACHED ", i, " - ", res[i,]$avg_1min_MW, " Corrected value: ", res[i, ]$Corrected))
+
+      }
+  }
+
+  # TODO handle 2nd special case:
+  # CrossingZero: With the correction negative (positive) needs are too much corrected and go positive (negative)
   #
 
 
   # Formatting
-  # Rename cuttedTime to DateTime
-  names(r)[names(r) == 'cuttedTime'] <- 'DateTime'
+  res <- res[, !(names(res) %in% c("cuttedTime"))]
 
-  return(r)
+
+  return(res)
 
 }
-
-
-
-
-
 
 

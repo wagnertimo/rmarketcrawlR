@@ -10,4 +10,4 @@ Description: Retrieves the operating reserve call data of https://
     german reserve market. It can then be used for further analysis.
 License: MIT License
 Encoding: UTF-8
-RoxygenNote: 5.0.1
+RoxygenNote: 6.0.1

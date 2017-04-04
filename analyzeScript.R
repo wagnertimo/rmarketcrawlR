@@ -1,8 +1,10 @@
+
 #'
 #' Testing script
 #'
 
-# ------------------------------------------------------------------------------------------------------
+
+#'------------------------------------------------------------------------------------------------------
 
 getTheMeanPowerPrice <- function(df, productType, dateFrom) {
 
@@ -16,14 +18,16 @@ getTheMeanPowerPrice <- function(df, productType, dateFrom) {
 
 getTheMeanPowerPrice(df, 'NEG_NT', '20.03.2017')
 
-# ------------------------------------------------------------------------------------------------------
+#'------------------------------------------------------------------------------------------------------
 
-#
-# TODO: ADD THE SPECIAL CASE OF HOMOGENITY. LOOK IF CALLS ARE POSITIVE (OR NEGATIVE) BUT NEEDS ARE ALL NEGATIVE (OR POSITIVE)
-#       --> add a new variable 1 or 0 special case (true or false). And if true, add the closes MW
-#
 
-# ----------------------------------------------------------------------------------------
+
+#'------------------------------------------------------------------------------------------------------
+#'
+#' TODO: IMPROVE THE CRAWLING FUNCTION. SOMETIMES ERROR OCCURS. SEEMS TO BE A FILE READ/WRITE PROBLEM
+#'       ---> MAYBE ANOTHER APPROACH TO NOT WRITE AND READ A TEMP FILE WOULD BE A SOLUTION
+#'
+#'------------------------------------------------------------------------------------------------------
 
 # Get the operating reserve needs and calls as well as the weekly auctions
 # Raw data from regelleistung.net and transnetbw.de (4sec needs)
@@ -35,48 +39,80 @@ df.main.auctions <- getOperatingReserveAuctions('23.12.2015', '30.12.2015', '2')
 df.main.calls.preprocessed <- preProcessOperatingReserveCalls(df.main.calls)
 df.main.needs.preprocessed <- preprocessOperatingReserveNeeds(df.main.needs)
 
-# get a sample of the call and needs data -> the first 30mins
-s.needs <- df.main.needs.preprocessed[1:450,]
-s.calls <- df.main.calls.preprocessed[1:2,]
 
 
-# Build up a data.frame with all relevant averages and values to approximate the 1min calls
-# r <- buildCorrectingCallsDF(s.needs, s.calls)
-# plotAVGMWvs4secMW(r)
-
-#
-# Calculate the corrected needs or approximate the calls. Based on the standard case
-#
-df.corrected <- approxOperatingReserveCalls(s.needs, s.calls)
-# plotCorrectedNeeds(df.corrected)
-
-
-# Sanity check 15min averages ==? 15min calls
-sum(df.corrected[df.corrected$Corrected >= 0 & df.corrected$cuttedTime < "2015-12-30 00:15:00", ]$Corrected) / 15
-sum(df.corrected[df.corrected$Corrected < 0 & df.corrected$cuttedTime >= "2015-12-30 00:15:00", ]$Corrected) / 15
-
-#
-# Try to merge/join the 4sec data (s.needs) with the minutely corrected data (df.corrected)
-#
-
-
-
-
-# ------------------------------------------------------------------------------------------
-
-
+#'------------------------------------------------------------------------------------------------------
 #'
 #' Two special cases:
 #' 1. Homogenity: only negative (positive) needs (homogenic needs) but with positive (negative ) calls (in both direction)
 #' 2. CrossingZero: With the correction negative (positive) needs are too much corrected and go positive (negative)
 #'
+#'------------------------------------------------------------------------------------------------------
+
+#'
+#' 1. special case Homogenity
+#' --> example for negative homogentity (and positive call) "01.01.2016 08:00:00" - "01.01.2016 08:15:00", sample.corrected[481:496,]
+#'                                                          "01.01.2016 00:00:00" - "01.01.2016 00:15:00", sample.corrected[1:15,]
+#'
+#' --> example for positive homogentity (and negative call) "2016-01-01 00:30:00" - "2016-01-01 00:45:00", sample.corrected[30:45,]
+#'
+
+
+# -------------
+# DONE
+# -------------
+
+
+#'
+#' 2. special case: CrossingZero
+#' Occurs e.g. 2016-01-01 12:15:00 -2016-01-01 12:30:00 --> 50th obs of the 15min calls of 01.01.2016
+#' --> neg homogenity but second smallest absolute value crosses zero with correction
+#'
+
+
+sample.needs <- getOperatingReserveNeeds("01.01.2016", "01.01.2016")
+sample.calls <- getOperatingReserveCalls('01.01.2016', '01.01.2016', '6', 'SRL')
+
+s.c <- preProcessOperatingReserveCalls(sample.calls)
+s.n <- preprocessOperatingReserveNeeds(sample.needs)
+
+# Choose a sample. Look in s.c, the 15min calls of the day (e.g. 01.01.2016) and get the observation number
+start <- 50
+end <- 51
+
+# The calculation chooses automatically the corresponding 4sec needs data to the chosen calls observation.
+df.needs <- s.n[(((start - 1)*225) + 1):(end*225),]
+df.calls <- s.c[start:end,]
+
+# Approximate the calls --> At this time only homogenity as special case handled. NO ZEROCROSSING
+r <- approximateCalls(df.needs, df.calls)
+
+# Plot the correction data to compare its result
+plotCorrectedNeeds(r)
+# Sanity check 15min averages ==? 15min calls
+sum(r[r$Corrected >= 0 & r$DateTime < "2016-01-01 00:15:00", ]$Corrected) / 15
+
 
 # Analzye the occurence of Case 2 within a longer time period
-sample.needs <- preprocessOperatingReserveNeeds(getOperatingReserveNeeds("30.12.2015", "30.12.2015"))
-sample.calls <- preProcessOperatingReserveCalls(getOperatingReserveCalls('30.12.2015', '30.12.2015', '6', 'SRL'))
+sample.needs <- getOperatingReserveNeeds("01.01.2016", "01.01.2016")
+sample.calls <- getOperatingReserveCalls('01.01.2016', '01.01.2016', '6', 'SRL')
+
+sample.calls <- preProcessOperatingReserveCalls(sample.calls)
+sample.needs <- preprocessOperatingReserveNeeds(sample.needs)
 
 # Calculate the corrected needs or approximate the calls. Based on the standard case
-sample.corrected <- approxOperatingReserveCalls(sample.needs, sample.calls)
+sample.corrected <- approximateCalls(sample.needs, sample.calls)
+
+sample.corrected[is.na(sample.corrected)] <- 0
+
+
+plotCorrectedNeeds(sample.corrected[31:45,])
+# Sanity check 15min averages ==? 15min calls
+sum(sample.corrected[1:30,][sample.corrected[1:30,]$Corrected < 0 & sample.corrected[1:30,]$DateTime < "2016-01-01 00:15:00", ]$Corrected) / 15
+sum(sample.corrected[1:30,][sample.corrected[1:30,]$Corrected >= 0 & sample.corrected[1:30,]$DateTime >= "2016-01-01 00:15:00", ]$Corrected) / 15
+
+
+
 
 attach(sample.corrected)
 
@@ -85,6 +121,9 @@ count(df.corrected[avg_1min_MW >= 0 & Corrected < 0,])
 # count the swith from negative to positive
 count(df.corrected[avg_1min_MW < 0 & Corrected >= 0,])
 
+
+
+detach(sample.corrected)
 
 
 

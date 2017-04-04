@@ -2,11 +2,10 @@
 % Please edit documentation in R/preprocessData.R
 \name{isGermanHoliday}
 \alias{isGermanHoliday}
-\title{This helper method states if the given datetime (POSIXct object) is a german bank holiday}
+\title{This helper method states if the given datetime (POSIXct object) is a german bank holiday. It is used in @seealso addTarif}
 \usage{
 isGermanHoliday(dateTime)
 }
 \description{
-This helper method states if the given datetime (POSIXct object) is a german bank holiday
+This helper method states if the given datetime (POSIXct object) is a german bank holiday. It is used in @seealso addTarif
 }
-

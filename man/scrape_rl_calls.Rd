@@ -9,11 +9,6 @@ scrape_rl_calls(date_from, date_to, uenb_type, rl_type)
 \description{
 The scrapeData script
 }
-\author{
-Timo Wagner, \email{wagnertimo@gmx.de}
-
-It contains main and helper functions to crawl call and auction results data out of
-}
 \references{
 \url{https://www.regelleistung.net/ext/data/}
 
@@ -25,4 +20,8 @@ Some useful keyboard shortcuts for package authoring:
  Check Package:             'Cmd + Shift + E'
  Test Package:              'Cmd + Shift + T'
 }
+\author{
+Timo Wagner, \email{wagnertimo@gmx.de}
 
+It contains main and helper functions to crawl call and auction results data out of
+}

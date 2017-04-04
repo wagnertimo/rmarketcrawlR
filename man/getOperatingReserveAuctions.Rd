@@ -24,4 +24,3 @@ The data contains all auctions from a given starting date till an end date. Be a
 getOperatingReserveAuctions('07.03.2017', '2')
 
 }
-

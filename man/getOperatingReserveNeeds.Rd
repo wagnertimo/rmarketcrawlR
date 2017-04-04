@@ -21,4 +21,3 @@ This main function retrieves the operating reserve needs from \url{https://www.t
 getOperatingReserveNeeds("30.12.2015", "02.01.2016")
 
 }
-

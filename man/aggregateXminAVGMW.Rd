@@ -12,14 +12,13 @@ aggregateXminAVGMW(df.needs, xmin)
 \item{xmin}{- a timeframe in minutes to build the average values}
 }
 \value{
-data.frame with the operating reserve needs (in MW), the type ("RZBedarf"), a DateTime (POSIXct object) and the average operating reserve need value of the x min time window
+data.frame with the Xmin (normally 1min) DateTime (POSIXct object) and the average operating reserve need value of the Xmin time window
 }
 \description{
-This method averages the data.frame of the operating reserve needs on a x minute time frame (e.g. 1 minute)
+This method averages the data.frame of the operating reserve needs on a X minute time frame (e.g. 1 minute) from the input needs (4sec resolution).
 }
 \examples{
 df.needs <- getOperatingReserveNeeds("30.12.2015", "30.12.2015")
 aggregateXminAVGMW(df.needs, 1)
 
 }
-
