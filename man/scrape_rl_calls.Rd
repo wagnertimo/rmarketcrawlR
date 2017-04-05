@@ -2,11 +2,20 @@
 % Please edit documentation in R/scrapeData.R
 \name{scrape_rl_calls}
 \alias{scrape_rl_calls}
-\title{The scrapeData script}
+\title{scrape_rl_calls}
 \usage{
 scrape_rl_calls(date_from, date_to, uenb_type, rl_type)
 }
+\arguments{
+\item{rl_type}{}
+}
+\value{
+a text content of a POST response. It has to be formatted @seealso preprocess_rl_calls.
+}
 \description{
+This function scrapes the reserve calls and returns the POST response in its raw format.
+}
+\details{
 The scrapeData script
 }
 \references{
@@ -19,6 +28,10 @@ Some useful keyboard shortcuts for package authoring:
  Build and Reload Package:  'Cmd + Shift + B'
  Check Package:             'Cmd + Shift + E'
  Test Package:              'Cmd + Shift + T'
+
+---------------------------------------------------------
+
+HELPER FUNCTIONS FOR CALL DATA
 }
 \author{
 Timo Wagner, \email{wagnertimo@gmx.de}

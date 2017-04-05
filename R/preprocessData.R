@@ -13,7 +13,7 @@
 #'  Test Package:              'Cmd + Shift + T'
 #'
 
-
+#'---------------------------------------------------------
 
 #'
 #' HELPER FUNCTIONS
@@ -77,7 +77,7 @@ preprocessOperatingReserveNeeds <- function(df.needs) {
 
 #' @title addTarif
 #'
-#' @description This method adds an additional variable called Tarif to the already preprocessed input data.frame which contains the right DateTime (@seealso preprocessOperatingReserveNeeds or preprocessOperatingReserveCalls)
+#' @description This method adds an additional variable called Tarif to the already preprocessed input data.frame which contains the right DateTime (@seealso preprocessOperatingReserveNeeds or preprocessOperatingReserveCalls). It depends on the helper method @seealso isGermanHoliday
 #' @param df - a data.frame which has to be preprocessed and additional information about the tarif is needed
 #' @return the input data.frame with the additional variable of the tarif
 #'
@@ -96,8 +96,9 @@ addTarif <- function(df) {
 }
 
 
-
-#' This helper method states if the given datetime (POSIXct object) is a german bank holiday. It is used in @seealso addTarif
+#'
+#' This helper method states if the given datetime (POSIXct object) is a german bank holiday. It is used in addTarif
+#'
 isGermanHoliday <- function(dateTime) {
 
   library(timeDate)
@@ -392,11 +393,147 @@ calcHomogenityCorrectness <- function(dataframe) {
 
 
 
+#' @title markCrossingZero
+#'
+#' @description This function adds 2 variables to the input data.frame. pos_CZ and neg_CZ. They have the value 1 if the corrected need crossed the zero line. The artificial zero values in the homogenity case are excluded.
+#'
+#' @param df - the input data.frame with a cuttedTime variable of 15min sections. The data.frame has to be preprocces and approximated (@seealso approximateCalls)
+#'
+#' @return The input data.frame with two additional variables (columns) namely pos_CZ and neg_CZ. CZ stands for CrossingZero - the special case.
+#'
+#' @examples
+#' # ... data already crawled and preprocessed
+#' df <- approximateCalls(preprocessed.needs, preprocessed.calls)
+#'
+#' df.with.marked.cz <- markCrossingZero(df)
+#'
+#' @export
+#'
+markCrossingZero <- function(df) {
 
+  print(paste("[INFO]: markCrossingZero - Loop through input and mark the negative and positive CZ"))
+
+  # Here the homogenity case is excluded. The smalelst absolute value is set artificially to zero in a homogene 15min section
+  # Init the CrossingZero marking variables for negative (value goes from positive to negative) and positive case (value goes from neg to positive)
+  df$neg_CZ <- 0
+  df$pos_CZ <- 0
+
+  for(i in 1:nrow(df)) {
+
+    # Mark negative CrossingZero
+    if(df[i,]$avg_1min_MW >= 0 & df[i,]$Corrected < 0 & df[i,]$Homo_POS != 1) {
+      df[i,]$neg_CZ <- 1
+    }
+    # Mark positive CrossingZero
+    else if(df[i,]$avg_1min_MW < 0 & df[i,]$Corrected > 0) {
+      df[i,]$pos_CZ <- 1
+    }
+  }
+
+  return(df)
+}
+
+
+#' @title countCrossingZeros
+#'
+#' @description This function needs the helper methods countNegativeCrossingZerosForDF and countPositiveCrossingZerosForDF. It then adds 2 additional variables to the input data.farme. n_neg_CZ and n_pos_CZ For every 15min section. The numbers in the columns represent the total amount of each CrossingZero type within the 15min section.
+#'
+#' @param df - the input data.frame with a cuttedTime variable of 15min sections. The data.frame has to be preprocces and approximated (@seealso approximateCalls)
+#'
+#' @return The input data.frame with two additional variables (columns) namely n_negCZ and n_pos_CZ. CZ stands for CrossingZero - the special case.
+#'
+#' @examples
+#' # ... data already crawled and preprocessed
+#' df <- approximateCalls(preprocessed.needs, preprocessed.calls)
+#'
+#' df.with.cz.counts <- countCrossingZeros(df)
+#'
+#' @export
+#'
+countCrossingZeros <- function(df) {
+
+  library(dplyr)
+
+  print(paste("[INFO]: countCrossingZeros - Create the positive and negative counting tables"))
+
+  # Init the data.frames such that all 15min sections of the input data.frame are initialized with value 0
+  t.pos <- data.frame(unique(df$cuttedTime), 0)
+  t.neg <- data.frame(unique(df$cuttedTime), 0)
+
+  colnames(t.neg) <- c("cuttedTime", "n_neg_CZ")
+  colnames(t.pos) <- c("cuttedTime", "n_pos_CZ")
+
+
+  t.pos.n <- df %>%
+    group_by(cuttedTime) %>%
+    #summarise(n_neg_CZ = countNegativeCrossingZerosForDF(df), n_pos_CZ = countPositiveCrossingZerosForDF(df))
+    do(data.frame(n_pos_CZ = countPositiveCrossingZerosForDF(.)))
+
+  # Handle exceptions of no counts.
+  if(nrow(t.pos.n) != 0) {
+    t.pos <- left_join(t.pos,t.pos.n, by = c("cuttedTime"))[, c("cuttedTime","n")]
+    colnames(t.pos) <- c("cuttedTime", "n_pos_CZ")
+    t.pos[is.na(t.pos)] <- 0
+  }
+
+
+  t.neg.n <- df %>%
+    group_by(cuttedTime) %>%
+    #summarise(n_neg_CZ = countNegativeCrossingZerosForDF(df), n_pos_CZ = countPositiveCrossingZerosForDF(df))
+    do(data.frame(n_neg_CZ = countNegativeCrossingZerosForDF(.)))
+
+  # Handle exceptions of no counts.
+  if(nrow(t.neg.n) != 0) {
+    t.neg <- left_join(t.neg,t.neg.n, by = c("cuttedTime"))[, c("cuttedTime","n")]
+    t.neg[is.na(t.neg)] <- 0
+    colnames(t.neg) <- c("cuttedTime", "n_neg_CZ")
+  }
+
+  print(paste("[INFO]: countCrossingZeros - Merge negative and positive counting tables."))
+
+  # Merge the negative and positive CrossingZero counts into one data.frame to join it with the input data.frame
+  t3 <- merge(t.pos,t.neg, by = "cuttedTime")
+
+  print(paste("[INFO]: countCrossingZeros - Left join the counting tables with the input"))
+
+  df <- left_join(df, t3, by = "cuttedTime")
+
+  return(df)
+}
+
+
+#'
+#' This helper method is used in the countCrossingZeros function.
+#' It counts the corrected needs which were positive and are now negative within the input data.frame.
+#'
+countNegativeCrossingZerosForDF <- function(df) {
+  if(count(df[df$avg_1min_MW >= 0 & df$Corrected < 0 & df$Homo_POS != 1,]) > 0) {
+    #print("negative CrossingZero occured")
+    count(df[df$avg_1min_MW >= 0 & df$Corrected < 0 & df$Homo_POS != 1,])
+  }
+}
+
+#'
+#' This helper method is used in the countCrossingZeros function.
+#' It counts the corrected needs which were negative and are now positive within the input data.frame.
+#'
+countPositiveCrossingZerosForDF <- function(df) {
+
+  # count the switch from negative to positive
+  if(count(df[df$avg_1min_MW < 0 & df$Corrected >= 0,]) > 0){
+    #print("positive CrossingZero occured")
+    count(df[df$avg_1min_MW < 0 & df$Corrected >= 0,])
+  }
+}
+
+
+
+#'---------------------------------------------------------
 
 #'
 #' MAIN FUNCTIONS
 #'
+
 
 #' @title approximateCalls
 #'
@@ -447,10 +584,7 @@ approximateCalls <- function(reserveNeeds, reserveCalls) {
   # Now check for homogenity cases and modify the 1min avg values and numbers of NEG and POS
   # If homogenity is the case then set the smallest absolute value of 1min avg need to zero and the 15/0 counts to 14/1. The rest stays the same.
 
-
   h.c <- calcHomogenityCorrectness(t.all)
-
-  print(h.c)
 
   # Now it is time to compute the 15min averages for the needs and make the correction calculation
   # Calculate the 15min average operating reserve needs for negative and positive power out of the 1min averages
@@ -465,8 +599,6 @@ approximateCalls <- function(reserveNeeds, reserveCalls) {
   # set the missing homogene averages to 0
   res[is.na(res)] <- 0
 
-
-  print(res)
 
   print(paste("[INFO]: approximateCalls - Calculate the corrected need values"))
 
@@ -484,7 +616,7 @@ approximateCalls <- function(reserveNeeds, reserveCalls) {
                             res[i,]$avg_1min_MW + ((res[i,]$pos_MW - res[i,]$avg_15min_MW_POS) * (15/res[i,]$POS)))
 
 
-      print(paste("NORMAL CASE: Corrected value for", i, " obs. of ", res[i,]$avg_1min_MW, " is --> ", res[i, ]$Corrected))
+      # print(paste("NORMAL CASE: Corrected value for", i, " obs. of ", res[i,]$avg_1min_MW, " is --> ", res[i, ]$Corrected))
     }
     else {
       # a positive homogenity case occured
@@ -494,7 +626,7 @@ approximateCalls <- function(reserveNeeds, reserveCalls) {
       # THis else statement is needed because the ifelse() above doesn#t trigger the NEG calculation because of the < 0 expression
       res[i, ]$Corrected <- if(res[i,]$Homo_POS == 1) res[i,]$neg_MW  * 15
 
-      print(paste("SPECIAL CASE: SMALLEST VALUE REACHED ", i, " - ", res[i,]$avg_1min_MW, " Corrected value: ", res[i, ]$Corrected))
+      # print(paste("SPECIAL CASE: SMALLEST VALUE REACHED ", i, " - ", res[i,]$avg_1min_MW, " Corrected value: ", res[i, ]$Corrected))
 
       }
   }
@@ -503,10 +635,9 @@ approximateCalls <- function(reserveNeeds, reserveCalls) {
   # CrossingZero: With the correction negative (positive) needs are too much corrected and go positive (negative)
   #
 
-
   # Formatting
-  res <- res[, !(names(res) %in% c("cuttedTime"))]
-
+  # remove the 15min cuttedTime for better visuality
+  # res <- res[, !(names(res) %in% c("cuttedTime"))]
 
   return(res)
 

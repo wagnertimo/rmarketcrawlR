@@ -20,6 +20,9 @@ data.frame with the results of the auctions held from starting date till now
 This main function retrieves the operating reserve auction results from \url{https://www.regelleistung.net/ext/tender/}.
 The data contains all auctions from a given starting date till an end date. Be aware of the weekly data and take care of the latest week. It is already in the data table of the website but there is no downloadable data available.
 }
+\details{
+---------------------------------------------------------
+}
 \examples{
 getOperatingReserveAuctions('07.03.2017', '2')
 

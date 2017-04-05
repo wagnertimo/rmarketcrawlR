@@ -14,14 +14,23 @@
 #'  Test Package:              'Cmd + Shift + T'
 #'
 
+#'---------------------------------------------------------
 
+#'
+#' HELPER FUNCTIONS FOR CALL DATA
+#'
 
-#
-# HELPER FUNCTIONS FOR CALL DATA
-#
-
-
-
+#' @title scrape_rl_calls
+#'
+#' @description This function scrapes the reserve calls and returns the POST response in its raw format.
+#'
+#' @param date_from
+#' @param date_to
+#' @param uenb_type
+#' @param rl_type
+#'
+#' @return a text content of a POST response. It has to be formatted @seealso preprocess_rl_calls.
+#'
 scrape_rl_calls <- function(date_from, date_to, uenb_type, rl_type) {
 
   library(httr)
@@ -45,7 +54,8 @@ scrape_rl_calls <- function(date_from, date_to, uenb_type, rl_type) {
 
 }
 
-
+#' This function handles the firstly needed preprocessing in the crawling step. It just formats the POST response of @seealso scrape_rl_calls.
+#' Further preprocessing is taken by the functions in the @seealso preprocessData.R script.
 preprocess_rl_calls <- function(response_content) {
 
   library(xml2)
@@ -113,13 +123,14 @@ getDatesArrayOfMonths <- function(d1.start, d1.end) {
   return(dates)
 }
 
-
+# This helper method returns the end date of the month of a given date
 endDateOfTheMonth <- function(date) {
   library(zoo)
 
   return(as.Date(as.yearmon(date), frac = 1))
 }
 
+# This helper method returns the start date of the month of a given date
 startDateOfTheMonth <- function(date){
   library(zoo)
 
@@ -127,6 +138,7 @@ startDateOfTheMonth <- function(date){
 
 }
 
+# This helper method returns the last date of the next month of a given date
 nextMonthDate <- function(date){
 
   library(lubridate)
@@ -139,7 +151,7 @@ nextMonthDate <- function(date){
 }
 
 
-
+#'---------------------------------------------------------
 
 #
 # HELPER FUNCTIONS FOR AUCTIONS DATA
@@ -209,6 +221,7 @@ callGETforAuctionResults <- function(auctionId) {
 
 
 
+#'---------------------------------------------------------
 
 #
 # COMMON HELPER FUNCITON (CALL AND AUCTION)
@@ -282,9 +295,10 @@ build_df_rl_calls_auctions <- function(response_content, fileName) {
 }
 
 
+#'---------------------------------------------------------
 
 #
-# HELPER FUNCTIONS FOR REQUIREMENT DATA
+# HELPER FUNCTIONS FOR NEED DATA
 #
 # Requirement of secondary operating reserve energy (Bedarf an SRL)
 # Data Dowload: https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/regelenergie-bedarf-und-abruf
@@ -397,8 +411,7 @@ buildDataFrameForDateCodes <- function(dateCodes) {
 
 
 
-
-
+#'---------------------------------------------------------
 
 #
 # MAIN FUNCTIONS

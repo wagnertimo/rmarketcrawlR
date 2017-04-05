@@ -30,6 +30,7 @@ Some useful keyboard shortcuts for package authoring:
  Check Package:             'Cmd + Shift + E'
  Test Package:              'Cmd + Shift + T'
 
+---------------------------------------------------------
 
 HELPER FUNCTIONS
 }

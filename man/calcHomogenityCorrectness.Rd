@@ -13,5 +13,5 @@ calcHomogenityCorrectness(dataframe)
 An updated dataframe where the NEG and POS counts in the homogenity cases are modified to 14/1 (from 15/0) and the smallest absolute value is updated to 0.
 }
 \description{
-Takes as input a combined minutely data.frame with 15min calls and 1 min avg of needs as well as the counts of negative and positive needs within 15min. It then updates the 1min avg need and NEG and POS values based on the homogenity.
+Takes as input a combined minutely data.frame with 15min calls and 1 min avg of needs as well as the counts of negative and positive needs within 15min. It then updates the 1min avg need and NEG and POS values based on the homogenity. NOTE: The warnings appear when in normal cases there is no smallest absolute value. The x variable becomes "na". That is the warning
 }

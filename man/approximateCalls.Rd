@@ -18,6 +18,8 @@ A complete data.frame with all needed variables for correcting the operating res
 This method builds the data.frame with all needed variables to correct the operating reserve needs power for approximating the calls.
 }
 \details{
+---------------------------------------------------------
+
 MAIN FUNCTIONS
 }
 \examples{
