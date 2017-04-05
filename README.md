@@ -8,7 +8,7 @@ It is build as part of my master thesis to analyze the calling probability of op
 
 ## Functionality
 
-### scrapeData.R script
+### Scraping reserve data
 
 The `scrapeData.R` script contains 3 main functions to provide the operating reserve power data (`rl_type`) from the transperant website of the four energy system providers (`uenb_type`). For more information about the method check out the documentation.
 
@@ -18,7 +18,18 @@ The `scrapeData.R` script contains 3 main functions to provide the operating res
 
 3. `getOperatingReserveNeeds(startDate, endDate)`: It retrieves the operating reserve needs for a specific time frame of the Netzregelverbund (NRV) based on a 4 sec resolution. (source: https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/regelenergie-bedarf-und-abruf)
 
-### preprocessData.R script
+### Preprocess the scraped data
 
-There is a `preprocessData.R` script which nicely formats the retrieved data.frames for further use.
-It also contains a function approximateOperatingReserveCalls(reserveNeeds) to approximate the operating reserve calls in a higher resolution (1 min instead of 15min).
+There is a `preprocessData.R` script which nicely formats and prepares the scraped data.frames for further use. The main functions:
+
+* `preProcessOperatingReserveCalls(scraped.calls)`
+
+* `preProcessOperatingReserveCalls(scraped.needs)`
+
+* `addTarif(df)`: it adds a *Tarif* variable to an input data.frame with values of *HT* (Hochtarif) or *NT* (Nebentarif). It is based on the hour and date as well as the official federal-state wide german holidays. Read documentation.
+
+* `approximateCalls(preprocessed.needs, preprocessed.calls)`: approximates the operating reserve calls in a higher resolution (1 min instead of 15min). It considers some special cases which can occur. The case of homogenity where all 1min needs are homogenly positive (or negative) within a 15min section. This leads to a 15min average need for negative (positive) power of 0. But in the case that the 15min calls of negative (positive) power is not 0, the 1min needs have to be changed. Its smallest absolute value gets the negative (positive) value to fulfill the 15min average call in 1min.
+
+
+
+Version v01 - 05.04.2017
