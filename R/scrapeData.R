@@ -177,12 +177,15 @@ scrape_rl_auctions <- function(date_from, productId) {
 }
 
 
-# Crawl the reults table of the auctions to get the auctionIds
-getAuctionIds <- function(response) {
+# Crawl the reults table of the auctions to get the auctionIds within the given timeframe. The results of the auction table contain all acutionIds from the given start date till the current date
+getAuctionIds <- function(response, date_from, date_to) {
 
   library(XML)
 
   print(paste("[INFO]: getAuctionIds"))
+
+  # Calculate the time difference in weeks of the given start and end date. This value sets the needed amount of auctionIds from the response since they are weekly auctions
+  tdiff <- floor(as.double(difftime(as.Date(date_to, format = "%d.%m.%Y") ,as.Date(date_from, format = "%d.%m.%Y") , units = c("weeks")))) + 1
 
   parsedHtml <- htmlParse(content(response, "text"))
 
@@ -192,10 +195,12 @@ getAuctionIds <- function(response) {
 
   auctionIds <- c()
 
-  for(i in 1:length(link_elements)) {
+  # Stop when last weekly auction specified by the given end date is reached. No need to parse all elements (result lasts till current/latest date)
+  for(i in 1:tdiff) {
 
     # Split the link on the slashes '/' and take only the last element, this is the auctionId
-    auctionId <- strsplit(link_elements[i], "/")[[1]][length(strsplit(link_elements[i], "/")[[1]])]
+    splitstring <- strsplit(link_elements[i], "/")[[1]]
+    auctionId <- splitstring[length(splitstring)]
 
     auctionIds <- append(auctionIds, auctionId)
   }
@@ -229,6 +234,9 @@ callGETforAuctionResults <- function(auctionId) {
 
 # Ignore the Warning message: header and 'col.names' are of different lengths
 # This is a strange error it still works
+#
+# # TODO improve this function --> causes arbitrary errors while writing and reading in the temp csv file
+#
 build_df_rl_calls_auctions <- function(response_content, fileName) {
 
 
@@ -309,6 +317,9 @@ build_df_rl_calls_auctions <- function(response_content, fileName) {
 
 # This helper function downloads the zip file and returns a data.frame of a given date code.
 # The date code is specified by the year and month e.g. "201612". All the files have a standard naming.
+#
+# TODO improve this function --> causes arbitrary errors while writing and reading in the temp csv file
+#
 scrape_rl_need_month <- function(date_code) {
 
   print(paste("[INFO]: scrape_rl_need_month - Scrape data for ", date_code))
@@ -439,24 +450,37 @@ getOperatingReserveAuctions <- function(date_from, date_to, productId) {
 
   print(paste("[INFO]: Called getOperatingReserveAuctions"))
 
+  # Retrieve all auctions (scrape the auction table) since the the given start date
   auctionsResponse <- scrape_rl_auctions(date_from, productId)
-  auctionIds <- getAuctionIds(auctionsResponse)
+  # Extract the auctionIds from the scraped auction table to retrieve the actual auction data
+  auctionIds <- getAuctionIds(auctionsResponse, date_from, date_to)
 
   print(paste("[INFO]: getOperatingReserveAuctions - GET request and build of auctions"))
 
+  # Init progress bar // CAUTION --> the length of auctionIds can be longer than needed (retrieves all auctionIds but stops at the input end date)
+  pb <- txtProgressBar(min = 0, max = length(auctionIds), style = 3)
+
+  # Get the first (initial) auction data and add it to the df_auctions data.frame
   response_content <- callGETforAuctionResults(auctionIds[1])
   df_auctions <- build_df_rl_calls_auctions(response_content, "temp2.csv")
 
+  # If only one auctionId (= just auction data of one day) is called, then stop and return the initial auction data
   if(length(auctionIds) > 1) {
 
     for(j in 2:length(auctionIds)) {
 
+      # Stop if the end date for the auctions is reached
+      # TODO FIX BUG.... SEEMS NOT TO STOP --> BETTER TO ALREADY LIMIT THE AUCTION IDS!!!!
       if(df_auctions$date_to < as.Date(date_to, "%d.%m.%Y")) {
 
         response_content <- callGETforAuctionResults(auctionIds[j])
+        # TODO improve this function --> causes arbitrary errors while writing and reading in the temp csv file
         df <- build_df_rl_calls_auctions(response_content, "temp2.csv")
 
         df_auctions <- rbind(df_auctions, df)
+
+        # update progress bar
+        setTxtProgressBar(pb, j)
       }
       else {
         break;
@@ -464,7 +488,13 @@ getOperatingReserveAuctions <- function(date_from, date_to, productId) {
     }
   }
 
+  # CLose the progress bar
+  close(pb)
+
+  print(paste("[INFO]: getOperatingReserveAuctions - DONE"))
+
   return(df_auctions)
+
 
 }
 
@@ -497,6 +527,9 @@ getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
 
   df <- data.frame()
 
+  # Init progress bar
+  pb <- txtProgressBar(min = 0, max = nrow(dates), style = 3)
+
   for(e in 1:nrow(dates)) {
 
     print(paste("[INFO] getOperatinReserveCalls - POST request for timeframe: ", dates[e,1], " - ", dates[e,2], sep = ""))
@@ -506,11 +539,20 @@ getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
     # Preprocess the response
     p <- preprocess_rl_calls(r)
     # Build up the data.frame
+    # TODO improve this function --> causes arbitrary errors while writing and reading in the temp csv file
     d <- build_df_rl_calls_auctions(p, "temp.csv")
 
     df <- rbind(df, d)
 
+    # update progress bar
+    setTxtProgressBar(pb, e)
+
   }
+
+  # CLose the progress bar
+  close(pb)
+
+  print(paste("[INFO]: getOperatingReserveCalls - DONE"))
 
   return(df)
 }

@@ -7,7 +7,7 @@
 addTarif(df)
 }
 \arguments{
-\item{df}{- a data.frame which has to be preprocessed and additional information about the tarif is needed}
+\item{df}{- a data.frame which has to be preprocessed and additional information about the tarif is needed. The input data.frame has to have at least a DateTime variable (POSIXct object) with hourly resolution.}
 }
 \value{
 the input data.frame with the additional variable of the tarif

@@ -19,85 +19,9 @@
 #' HELPER FUNCTIONS
 #'
 
-#' @title preProcessOperatingReserveCalls
-#'
-#' @description This method transforms the original retrieved operating reserve calls into a smaller (less variables) data.frame.
-#'
-#' @param df.calls - the data.frame containing the original retrieved operating reserve calls
-#'
-#' @return a modified data.frame containing the DateTime (as POSIXct object), neg_MW (negative num) and pos_MW
-#'
-#' @export
-#'
-preProcessOperatingReserveCalls <- function(df.calls) {
-
-  # Build variable DateTime out of Date and Time (as String) and neg_MW (with a negative num) and pos_MW
-  # Time takes the value of "UHRZEIT.VON". The seconds are missing so add ":00"
-  df.calls$DateTime <- as.POSIXct(paste(dmy(df.calls$DATUM), paste(df.calls$UHRZEIT.VON, ":00", sep = ""), sep=" "), tz = "MET")
-  df.calls$pos_MW <- df.calls$BETR..POS
-  df.calls$neg_MW <- -df.calls$BETR..NEG
-
-  keeps <- c("DateTime", "neg_MW", "pos_MW")
-  #keeps <- c("DateTime", "neg_MW", "pos_MW")
-
-  return(df.calls[, keeps])
-
-}
-
-
-
-
-#' @title preprocessOperatingReserveNeeds
-#'
-#' @description This method transforms the original retrieved operating reserve needs into a nicer data.frame.
-#'
-#' @param df.needs - the data.frame containing the original retrieved operating reserve needs
-#'
-#' @return a modified data.frame containing the Type ("RZBedarf"), DateTime (as POSIXct object), the MW and the direction variable (POS or NEG)
-#'
-#' @export
-#'
-preprocessOperatingReserveNeeds <- function(df.needs) {
-
-  # Build up a Date-Time object POSIXct for easier handling. Set the timezone to Middle Europe Time
-  # format: e.g. 2017-30-12 00:00:04
-  df.needs$DateTime <- as.POSIXct(paste(df.needs$Date, df.needs$Time, sep=" "), tz = "MET")
-
-  # Not sure when and if needed. This variable is redundant
-  # df.needs$Direction <- ifelse(df.needs$MW < 0, "NEG", "POS")
-
-  drops <- c("Date", "Time", "Type")
-
-  return(df.needs[ , !(names(df.needs) %in% drops)])
-
-}
-
-
-
-
-#' @title addTarif
-#'
-#' @description This method adds an additional variable called Tarif to the already preprocessed input data.frame which contains the right DateTime (@seealso preprocessOperatingReserveNeeds or preprocessOperatingReserveCalls). It depends on the helper method @seealso isGermanHoliday
-#' @param df - a data.frame which has to be preprocessed and additional information about the tarif is needed
-#' @return the input data.frame with the additional variable of the tarif
-#'
-#' @export
-#'
-addTarif <- function(df) {
-
-  library(lubridate)
-
-  # HT is Mon - Fri 8 - 20 without bank holiday
-  # NT is else
-  # Get week day: 1 sunday 2 monday 3 tuesday 4 wednesday ... 7 saturday
-  df$Tarif <- ifelse((hour(df$DateTime) >= 8 & hour(df$DateTime) < 20) & (wday(df$DateTime) > 1 & wday(df$DateTime) < 7) & !isGermanHoliday(df$DateTime), "HT", "NT")
-
-  return(df)
-}
-
 
 #'
-#' This helper method states if the given datetime (POSIXct object) is a german bank holiday. It is used in addTarif
+#' This helper method states if the given datetime (POSIXct object) is a german bank holiday. It is used in @seealso addTarif
 #'
 isGermanHoliday <- function(dateTime) {
 
@@ -131,6 +55,8 @@ isGermanHoliday <- function(dateTime) {
 
   return(bool)
 }
+
+
 
 
 
@@ -169,6 +95,7 @@ aggregateXminAVGMW <- function(df.needs, xmin) {
 
   return(df.needs.avg)
 }
+
 
 
 
@@ -240,6 +167,35 @@ get15minAVGOf1minAVG <- function(dataframe, direction) {
 
 
 
+
+
+
+#' This helper method is used in @seealso approxRecursionWith15minChunk
+#' It retrieves a data.frame and returns the same data.frame with added columns for NEG and POS 15min avg of the 1min needs
+#'
+get15minAVGs <- function(dataframe) {
+
+
+  # Now it is time to compute the 15min averages for the needs and make the correction calculation
+  # Calculate the 15min average operating reserve needs for negative and positive power out of the 1min averages
+  h.c.15min.neg <- get15minAVGOf1minAVG(dataframe, "NEG")
+  h.c.15min.pos <- get15minAVGOf1minAVG(dataframe, "POS")
+
+  # Merge everything together by the passed through cuttedTime variable (cutting time is computational intensive!!)
+  # Left Join neccessary. In case of negative (positive) homogene 15min sections the averages of the positive (negative) values are missing NA
+  res <- left_join(dataframe, h.c.15min.neg, by = "cuttedTime")%>%
+    left_join(h.c.15min.pos, by = "cuttedTime")
+  # set the missing homogene averages to 0
+  res[is.na(res)] <- 0
+
+  return(res)
+}
+
+
+
+
+
+
 #' @title getNumberOfPosOrNegIn15min
 #'
 #' @description This method adds the counts of NEG and POS 1min averages for every 15min section.
@@ -290,13 +246,15 @@ getNumberOfPosOrNegIn15min <- function(dataframe) {
 
   print(paste("[INFO]: getNumberOfPosOrNegIn15min - Mmerging with input data.frame"))
 
-  r <- merge(dataframe, test, by = "cuttedTime")
+  #r <- merge(dataframe, test, by = "cuttedTime")
   # If homogenity is the case then there are na entries. Therefore change them to 0
   # Throws arrow if only one (NEG or POS) can be count --> pue Homogenity for all observations(15min sections)
   # r[is.na(r)] <- 0
 
   # Pass the 15min cuttedTime Variable through. WIll be needed for further operations on the dataset. Saves computation time.
-  return(r)
+  #return(r)
+
+  return(test)
 }
 
 
@@ -327,7 +285,7 @@ calcHomogenityCorrectness <- function(dataframe) {
   # Identify the homogenity cases of the input data.frame --> NEG (POS) count is 15 (only NEG or POS 1min avg needs) and the 15min call is positive (negative).
   h.special <- dataframe[(dataframe$NEG == 15 & dataframe$pos_MW > 0) | (dataframe$POS == 15 & dataframe$neg_MW < 0) ,]
 
-  # h.special is empty if there is no homogenity case. In that case, return the input data.frame with $Homo_NEG = 0and $Homo_POS = 0
+  # h.special is empty if there is no homogenity case. In that case, return the input data.frame with $Homo_NEG = 0 and $Homo_POS = 0
   if(nrow(h.special) != 0) {
 
     # Compute the absolute minimum of the special cases for every 15min section
@@ -389,6 +347,125 @@ calcHomogenityCorrectness <- function(dataframe) {
 
   return(dataframe)
 }
+
+
+
+
+
+
+#' This helping method is called in the @seealso approxRecursionWith15minChunk function to update the avg_1min_MW variable in a recursively manner.
+#' Here no extra variable Corrected is added!
+#' It takes a data.frame as input with the avg_1min_MW variable and the additional homogenity variables.
+#'
+#' @export
+#'
+correctionCalculationForRecursion <- function(res) {
+
+  print(paste("[INFO]: correctionCalculationForRecursion - Update avg_1min_MW"))
+
+  # Init the Correction variable
+  # No extra variable needed for recursion.
+  # res$Corrected <- 0
+
+  for(i in 1:nrow(res)) {
+
+    # Be aware of the case that there is homogenity and the smallest absolute value is zero --> then the if statement (<0) won't be activated.
+    # THerefore a special else statement for positive homogenity is needeed
+    if((res[i,]$Homo_NEG == 0 & res[i,]$Homo_POS == 0) | (res[i,]$Homo_NEG == 1 & res[i,]$Homo_POS == 0) | (res[i,]$Homo_NEG == 0 & res[i,]$Homo_POS == 1 & res[i,]$avg_1min_MW != 0)) {
+
+      # Calculate the corrected operating need value or the new approximated 1min call
+      res[i, ]$avg_1min_MW <- ifelse(res[i,]$avg_1min_MW < 0, res[i,]$avg_1min_MW + ((res[i,]$neg_MW - res[i,]$avg_15min_MW_NEG) * (15/res[i,]$NEG)),
+                                     res[i,]$avg_1min_MW + ((res[i,]$pos_MW - res[i,]$avg_15min_MW_POS) * (15/res[i,]$POS)))
+
+      # print(paste("NORMAL CASE: Corrected value for", i, " obs. of ", res[i,]$avg_1min_MW, " is --> ", res[i, ]$Corrected))
+    }
+    else {
+      # a positive homogenity case occured --> Correction for the special case homogenity: The 0 value marks the smallest absolute value.
+      # This else statement is needed because the ifelse() above doesn#t trigger the NEG calculation because of the < 0 expression
+      # For positive homogenity, the 0 value is corrected by the opposite avgs and counts (NEG)
+      res[i, ]$avg_1min_MW <- if(res[i,]$Homo_POS == 1) res[i,]$neg_MW  * 15
+
+      # print(paste("SPECIAL CASE: SMALLEST VALUE REACHED ", i, " - ", res[i,]$avg_1min_MW, " Corrected value: ", res[i, ]$Corrected))
+    }
+  }
+
+
+  return(res)
+
+}
+
+
+
+
+
+
+#' This is a helper method used in @seealso approximateCallsInRecursion
+#' It handles the recursion.
+#'
+#' @param dataframe - a dataframe of a 15min section. Only 15 observations
+#'
+#' @return a 15min data.frame with the corrected/updated values of avg_1min_MW
+#'
+#'
+approxRecursionWith15minChunk <- function(dataframe) {
+
+  res <- dataframe
+  # Counts the number of recursions which will be logged/printed in the console
+  counter <- 0
+
+  # Do and repeat the recursion of counting NEG nad POS, correcting for homogenity, calculating the 15min NEG and POS avg of the needs, correct the needs
+  repeat{
+
+    counter <- counter + 1
+    print(paste("[INFO]: approxRecursionWith15minChunk - Recursion number: ", counter))
+
+    # (re-)set the input data.frame
+    df <- res[,!(names(res) %in% c("Corrected", "Direction", "NEG", "POS", "Homo_NEG", "Homo_POS", "avg_15min_MW_NEG", "avg_15min_MW_POS"))]
+    # print(df)
+
+    # Add the numbers of negative and positive needs within 15min to the data.frame
+    rr <- getNumberOfPosOrNegIn15min(df)
+    # print(rr)
+
+    # merge with the original data.frame since the getNumberOfPosOrNegIn15min funtion does not combin it with its input
+    df <- merge(df, rr, by = "cuttedTime")
+    # print(df)
+
+    # Handle Homogenity cases. Identify a homogene 15min section and set its smalles absolut value to 0 and reset/update the POS and NEG counters
+    h.c <- calcHomogenityCorrectness(df)
+    # print(h.c)
+
+    # Calculate the 15min average operating reserve needs for negative and positive power out of the 1min averages. Combine it also already with the input data.frame
+    res <- get15minAVGs(h.c)
+    # print(res)
+
+    # Compute the corrected needs values for approximating the 1min calls. Implemented correction logic. It updates the avg_1min_MW variable
+    res <- correctionCalculationForRecursion(res)
+    # print(res)
+
+
+    # Check if the stop criteria of the recursion is met.
+    # The 15min NEG and POS avg of the needs must equal the corresponding neg and pos 1min calls.
+    # Normally it should be that one of the statements of NEG or POS avg is TRUE the other must also be true.
+    # This coulld maybe differ when computational errors occur!
+    # Use isTRUE(all.equal()) comparison instead of == because of floating point arithemtic
+    if(isTRUE(all.equal(get15minAVGOf1minAVG(res, "NEG")$avg_15min_MW_NEG, unique(res$neg_MW))) & isTRUE(all.equal(get15minAVGOf1minAVG(res, "POS")$avg_15min_MW_POS, unique(res$pos_MW)))){
+
+      print(paste("[INFO]: approxRecursionWith15minChunk - Averages equal"))
+
+      # Update the new avg_15min_MW_NEG and avg_15min_MW_POS for the data.frame. Although it is now redundant because it is equal to neg_MW and pos_MW
+      res <- get15minAVGs(res[,!(names(res) %in% c("avg_15min_MW_NEG", "avg_15min_MW_POS"))])
+
+      break
+    }
+  }
+
+  return(res)
+
+}
+
+
+
 
 
 
@@ -528,19 +605,143 @@ countPositiveCrossingZerosForDF <- function(df) {
 
 
 
+
+
+
 #'---------------------------------------------------------
 
 #'
 #' MAIN FUNCTIONS
 #'
 
+#' @title preProcessOperatingReserveCalls
+#'
+#' @description This method transforms the original retrieved operating reserve calls into a smaller (less variables) data.frame.
+#'
+#' @param df.calls - the data.frame containing the original retrieved operating reserve calls
+#'
+#' @return a modified data.frame containing the DateTime (as POSIXct object), neg_MW (negative num) and pos_MW
+#'
+#' @export
+#'
+preProcessOperatingReserveCalls <- function(df.calls) {
+
+  # Build variable DateTime out of Date and Time (as String) and neg_MW (with a negative num) and pos_MW
+  # Time takes the value of "UHRZEIT.VON". The seconds are missing so add ":00"
+  df.calls$DateTime <- as.POSIXct(paste(dmy(df.calls$DATUM), paste(df.calls$UHRZEIT.VON, ":00", sep = ""), sep=" "), tz = "MET")
+  df.calls$pos_MW <- df.calls$BETR..POS
+  df.calls$neg_MW <- -df.calls$BETR..NEG
+
+  keeps <- c("DateTime", "neg_MW", "pos_MW")
+  #keeps <- c("DateTime", "neg_MW", "pos_MW")
+
+  return(df.calls[, keeps])
+
+}
+
+
+
+#' @title preprocessOperatingReserveNeeds
+#'
+#' @description This method transforms the original retrieved operating reserve needs into a nicer data.frame.
+#'
+#' @param df.needs - the data.frame containing the original retrieved operating reserve needs
+#'
+#' @return a modified data.frame containing the Type ("RZBedarf"), DateTime (as POSIXct object), the MW and the direction variable (POS or NEG)
+#'
+#' @export
+#'
+preprocessOperatingReserveNeeds <- function(df.needs) {
+
+  # Build up a Date-Time object POSIXct for easier handling. Set the timezone to Middle Europe Time
+  # format: e.g. 2017-30-12 00:00:04
+  df.needs$DateTime <- as.POSIXct(paste(df.needs$Date, df.needs$Time, sep=" "), tz = "MET")
+
+  # Not sure when and if needed. This variable is redundant
+  # df.needs$Direction <- ifelse(df.needs$MW < 0, "NEG", "POS")
+
+  drops <- c("Date", "Time", "Type")
+
+  return(df.needs[ , !(names(df.needs) %in% drops)])
+
+}
+
+
+
+
+#' @title addTarif
+#'
+#' @description This method adds an additional variable called Tarif to the already preprocessed input data.frame which contains the right DateTime (@seealso preprocessOperatingReserveNeeds or preprocessOperatingReserveCalls). It depends on the helper method @seealso isGermanHoliday
+#' @param df - a data.frame which has to be preprocessed and additional information about the tarif is needed. The input data.frame has to have at least a DateTime variable (POSIXct object) with hourly resolution.
+#' @return the input data.frame with the additional variable of the tarif
+#'
+#' @export
+#'
+addTarif <- function(df) {
+
+  library(lubridate)
+
+  # HT is Mon - Fri 8 - 20 without bank holiday
+  # NT is else
+  # Get week day: 1 sunday 2 monday 3 tuesday 4 wednesday ... 7 saturday
+  df$Tarif <- ifelse((hour(df$DateTime) >= 8 & hour(df$DateTime) < 20) & (wday(df$DateTime) > 1 & wday(df$DateTime) < 7) & !isGermanHoliday(df$DateTime), "HT", "NT")
+
+  return(df)
+}
+
+
+
+
+#' @title addDirection
+#'
+#' @description This method adds an additional variable called Direction to the already preprocessed input data.frame which contains the corrected avg_1min_MW
+#' @param df - a data.frame with the corrected avg_1min_MW
+#' @return the input data.frame with the additional variable of the Direction
+#'
+#' @export
+#'
+addDirection <- function(df) {
+
+  # Add a Directions column for later use. Being able to group
+  df$Direction <- as.factor(ifelse(df$avg_1min_MW < 0, "NEG", "POS"))
+
+  return(df)
+}
+
+
+
+
+#' @title preprocessOperatingReserveAuctions
+#'
+#' @description This method transforms the original retrieved operating reserve auctions into a nicer data.frame.
+#'
+#' @param df.auctions - the data.frame containing the original retrieved operating reserve auctions
+#'
+#' @return a modified data.frame containing the Type ("RZBedarf"), DateTime (as POSIXct object), the MW and the direction variable (POS or NEG)
+#'
+#' @export
+#'
+preprocessOperatingReserveAuctions <- function(df.auctions) {
+
+  df.auctions$Tarif <- rapply(strsplit(as.character(sample.auctions$product_name), "_"), function(x) x[2])
+  df.auctions$Direction <- rapply(strsplit(as.character(sample.auctions$product_name), "_"), function(x) x[1])
+
+  drops <- c("offers_AT", "called_power_MW", "ap_payment_direction")
+
+  return(df.auctions[ , !(names(df.auctions) %in% drops)])
+
+}
+
+
+
+
 
 #' @title approximateCalls
 #'
 #' @description This method builds the data.frame with all needed variables to correct the operating reserve needs power for approximating the calls.
 #'
-#' @param reserveNeeds - The preprocessed operating reserve needs (@seealso preprocessOperatingReserveNeeds)
-#' @param reserveCalls - The preprocessed operating reserve calls (@seealso preprocessOperatingReserveCalls)
+#' @param df.needs - The preprocessed operating reserve needs (@seealso preprocessOperatingReserveNeeds)
+#' @param df.calls - The preprocessed operating reserve calls (@seealso preprocessOperatingReserveCalls)
 #'
 #' @return A complete data.frame with all needed variables for correcting the operating reserve needs and approximating the calls.
 #'
@@ -548,14 +749,14 @@ countPositiveCrossingZerosForDF <- function(df) {
 #' df.needs <- getOperatingReserveNeeds("30.12.2015", "30.12.2015")
 #' df.calls <- getOperatingReserveCalls('30.12.2015', '30.12.2015', '6', 'SRL')
 #'
-#' reserveCalls <- preProcessOperatingReserveCalls(df.calls)
-#' reserveNeeds <- preprocessOperatingReserveNeeds(df.needs)
+#' df.needs <- preProcessOperatingReserveCalls(df.calls)
+#' df.calls <- preprocessOperatingReserveNeeds(df.needs)
 #'
-#' approximateCalls(reserveNeeds, reserveCalls)
+#' approximateCalls(df.needs, df.calls)
 #'
 #' @export
 #'
-approximateCalls <- function(reserveNeeds, reserveCalls) {
+approximateCalls <- function(df.needs, df.calls) {
 
   library(dplyr)
 
@@ -574,15 +775,23 @@ approximateCalls <- function(reserveNeeds, reserveCalls) {
   # merge the 1min needs and 15min calls based on the cuttedTime
   t.all <-  merge(df.needs.1min, df.calls, by.x = "cuttedTime", by.y = "DateTime")
 
+  #print(t.all)
+
+  # ----------- Here should start the recursion ------------------- #
 
   # Add the numbers of negative and positive needs within 15min to the data.frame
-  t.all <- getNumberOfPosOrNegIn15min(t.all)
+  nums <- getNumberOfPosOrNegIn15min(t.all)
+  t.all <- merge(t.all, nums, by = "cuttedTime")
 
   #print(t.all)
 
   # Consider 1. special case: Homogenity
   # Now check for homogenity cases and modify the 1min avg values and numbers of NEG and POS
   # If homogenity is the case then set the smallest absolute value of 1min avg need to zero and the 15/0 counts to 14/1. The rest stays the same.
+
+  # This is no longer neccessary in the second run of a recursion since at least now a crossing sets the counters away from 15/0
+  # BUT !!!! Whats with the case of a 14/1 in the first run (no homogenity) and then the correction leads to a 15/0 !!!
+  # keep homogenity in recursion!
 
   h.c <- calcHomogenityCorrectness(t.all)
 
@@ -594,11 +803,12 @@ approximateCalls <- function(reserveNeeds, reserveCalls) {
 
   # Merge everything together by the passed through cuttedTime variable (cutting time is computational intensive!!)
   # Left Join neccessary. In case of negative (positive) homogene 15min sections the averages of the positive (negative) values are missing NA
-  res <- left_join(h.c, h.c.15min.neg, by="cuttedTime")%>%
+  res <- left_join(h.c, h.c.15min.neg, by = "cuttedTime")%>%
     left_join(h.c.15min.pos, by = "cuttedTime")
   # set the missing homogene averages to 0
   res[is.na(res)] <- 0
 
+  #print(res)
 
   print(paste("[INFO]: approximateCalls - Calculate the corrected need values"))
 
@@ -619,11 +829,9 @@ approximateCalls <- function(reserveNeeds, reserveCalls) {
       # print(paste("NORMAL CASE: Corrected value for", i, " obs. of ", res[i,]$avg_1min_MW, " is --> ", res[i, ]$Corrected))
     }
     else {
-      # a positive homogenity case occured
-
-      # Correction for the special case homogenity: The 0 value marks the smallest absolute value.
+      # a positive homogenity case occured --> Correction for the special case homogenity: The 0 value marks the smallest absolute value.
+      # This else statement is needed because the ifelse() above doesn#t trigger the NEG calculation because of the < 0 expression
       # For positive homogenity, the 0 value is corrected by the opposite avgs and counts (NEG)
-      # THis else statement is needed because the ifelse() above doesn#t trigger the NEG calculation because of the < 0 expression
       res[i, ]$Corrected <- if(res[i,]$Homo_POS == 1) res[i,]$neg_MW  * 15
 
       # print(paste("SPECIAL CASE: SMALLEST VALUE REACHED ", i, " - ", res[i,]$avg_1min_MW, " Corrected value: ", res[i, ]$Corrected))
@@ -643,4 +851,152 @@ approximateCalls <- function(reserveNeeds, reserveCalls) {
 
 }
 
+
+
+
+#' @title approximateCalls
+#'
+#' @description This recursive approach handles the special case of CrossingZero. It builds the data.frame with all needed variables to correct the operating reserve needs power for approximating the calls.
+#'
+#' @param df.needs - The preprocessed operating reserve needs (@seealso preprocessOperatingReserveNeeds)
+#' @param df.calls - The preprocessed operating reserve calls (@seealso preprocessOperatingReserveCalls)
+#'
+#' @return A complete data.frame with the corrected operating reserve needs to approximate the 1min calls (avg_1min_MW).
+#'
+#' @examples
+#' df.needs <- getOperatingReserveNeeds("30.12.2015", "30.12.2015")
+#' df.calls <- getOperatingReserveCalls('30.12.2015', '30.12.2015', '6', 'SRL')
+#'
+#' df.calls <- preProcessOperatingReserveCalls(df.calls)
+#' df.needs <- preprocessOperatingReserveNeeds(df.needs)
+#'
+#' approximateCallsInRecursion(df.needs, df.calls)
+#'
+#'
+#' @export
+#'
+approximateCallsInRecursion <- function(df.needs, df.calls) {
+
+  library(dplyr)
+
+  print(paste("[INFO]: Called approximateCallsInRecursion"))
+
+  # Calculate the 1min average operating reserve needs out of the 4sec data
+  df.needs.1min <- aggregateXminAVGMW(df.needs, 1)
+
+  print(paste("[INFO]: approximateCallsInRecursion - Cut the 15min sections"))
+
+  # Join with 15min calls
+  # Cut 1min avg needs into 15min for join operation
+  df.needs.1min$cuttedTime <- cut(df.needs.1min$DateTime, breaks = paste("15", "min", sep = " "))
+  df.needs.1min$cuttedTime <- as.POSIXct(df.needs.1min$cuttedTime, tz = "MET")
+
+  # merge the 1min needs and 15min calls based on the cuttedTime
+  t.all <-  merge(df.needs.1min, df.calls, by.x = "cuttedTime", by.y = "DateTime")
+
+
+  print(paste("[INFO]: approximateCallsInRecursion - Split the 15min sections"))
+
+  # split the data.frame on the cuttedTime variable 15min sections
+  # creates a list
+  path <-  split(r, r[,1])
+  # Init the merge data.frame
+  res <- data.frame()
+  # Init progress bar
+  pb <- txtProgressBar(min = 0, max = length(path), style = 3)
+
+  # For every 15min section do the recursion to correct the 1min avg needs
+  for(i in 1:length(path)) {
+
+    print(paste("[INFO]: approximateCallsInRecursion - Start recursion for section: ", names(path[i])))
+
+    # ----------- Here starts the recursion ------------------- #
+    # Do and repeat the recursion of counting NEG nad POS, correcting for homogenity, calculating the 15min NEG and POS avg of the needs, correct the needs
+    correctedData <- approxRecursionWith15minChunk(path[[i]])
+    res <- rbind(res, correctedData)
+    # update progress bar
+    setTxtProgressBar(pb, i)
+
+  }
+
+  # CLose the progress bar
+  close(pb)
+
+  print(paste("[INFO]: approximateCallsInRecursion - DONE"))
+
+  return(res)
+
+}
+
+
+
+
+
+
+#' @title getMarginalWorkPrice
+#'
+#' @description This recursive approach handles the special case of CrossingZero. It builds the data.frame with all needed variables to correct the operating reserve needs power for approximating the calls.
+#'
+#' @param df - The preprocessed and approximated calls (@seealso approximateCallsInRecursion)
+#' @param auctions - The preprocessed operating reserve auctions (@seealso getOperatingReserveAuctions and preprocessOperatingReserveAuctions)
+#'
+#' @return A complete data.frame with the 1min approximated calls and the corresponding marginal work prices for every minute
+#'
+#' @examples
+#' sample.auctions <- getOperatingReserveAuctions('28.12.2015', '07.01.2016', '2')
+#' sample.needs <- getOperatingReserveNeeds("01.01.2016", "01.01.2016")
+#' sample.calls <- getOperatingReserveCalls('01.01.2016', '01.01.2016', '6', 'SRL')
+#'
+#' s.c <- preProcessOperatingReserveCalls(sample.calls)
+#' s.n <- preprocessOperatingReserveNeeds(sample.needs)
+#' s.a <- preprocessOperatingReserveAuctions(sample.auctions)
+#'
+#' df.approx.calls <- approximateCallsInRecursion(s.n, s.c)
+#'
+#' df <- getMarginalWorkPrices(df.approx.calls, s.a)
+#'
+#'
+#' @export
+#'
+getMarginalWorkPrices <- function(df, auctions) {
+
+  library(dplyr)
+
+  # Add the Tarif to the calls
+  df <- addTarif(df)
+  # Add Direction NEG or POS to the calls
+  df <- addDirection(df)
+
+  # Init the data.frame which saves all the marginal work prices. Then do a column bind to the original data.frame
+  arraym <- data.frame()
+
+  # for ever approx. 1min call match auction bids and compute the marginal work price
+  for(i in 1:nrow(df)) {
+
+    callObj <- df[i, ]
+
+    # 1. Get the auctions within the timeframe and the right Tarif and the right direction
+    # 2. Order the auction bids by the work price (min to max)
+    # 3. Cumulate the offered_power_MW in new column cumsum
+    # 4. Subset the auctions which are less or equal to the needed power (absolute value of avg_1min_MW). Fractions are excluded --> see question in analyzeSript.R
+    # 5. Get the highest work price
+    ss <- auctions %>%
+      filter(date_from <= callObj$DateTime & callObj$DateTime <= date_to & callObj$Tarif == Tarif & callObj$Direction == Direction) %>%
+      arrange(work_price) %>%
+      mutate(cumsum = cumsum(offered_power_MW)) %>%
+      filter(cumsum <= abs(callObj$avg_1min_MW)) %>%
+      summarise(m = max(work_price))
+
+    # Store the work price of the auction in an array
+    arraym <- rbind(arraym, ss$m)
+
+  }
+
+  # Give it the right name and bind it as a new column to the input data.frame
+  colnames(arraym) <- c("marginalWorkPrice")
+  df <- cbind(df,arraym)
+
+  return(df)
+
+}
 

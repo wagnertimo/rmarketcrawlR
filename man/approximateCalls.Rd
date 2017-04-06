@@ -4,12 +4,12 @@
 \alias{approximateCalls}
 \title{approximateCalls}
 \usage{
-approximateCalls(reserveNeeds, reserveCalls)
+approximateCalls(df.needs, df.calls)
 }
 \arguments{
-\item{reserveNeeds}{- The preprocessed operating reserve needs (@seealso preprocessOperatingReserveNeeds)}
+\item{df.needs}{- The preprocessed operating reserve needs (@seealso preprocessOperatingReserveNeeds)}
 
-\item{reserveCalls}{- The preprocessed operating reserve calls (@seealso preprocessOperatingReserveCalls)}
+\item{df.calls}{- The preprocessed operating reserve calls (@seealso preprocessOperatingReserveCalls)}
 }
 \value{
 A complete data.frame with all needed variables for correcting the operating reserve needs and approximating the calls.
@@ -17,18 +17,13 @@ A complete data.frame with all needed variables for correcting the operating res
 \description{
 This method builds the data.frame with all needed variables to correct the operating reserve needs power for approximating the calls.
 }
-\details{
----------------------------------------------------------
-
-MAIN FUNCTIONS
-}
 \examples{
 df.needs <- getOperatingReserveNeeds("30.12.2015", "30.12.2015")
 df.calls <- getOperatingReserveCalls('30.12.2015', '30.12.2015', '6', 'SRL')
 
-reserveCalls <- preProcessOperatingReserveCalls(df.calls)
-reserveNeeds <- preprocessOperatingReserveNeeds(df.needs)
+df.needs <- preProcessOperatingReserveCalls(df.calls)
+df.calls <- preprocessOperatingReserveNeeds(df.needs)
 
-approximateCalls(reserveNeeds, reserveCalls)
+approximateCalls(df.needs, df.calls)
 
 }

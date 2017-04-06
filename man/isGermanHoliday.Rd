@@ -2,10 +2,29 @@
 % Please edit documentation in R/preprocessData.R
 \name{isGermanHoliday}
 \alias{isGermanHoliday}
-\title{This helper method states if the given datetime (POSIXct object) is a german bank holiday. It is used in addTarif}
+\title{The preprocessData script}
 \usage{
 isGermanHoliday(dateTime)
 }
 \description{
-This helper method states if the given datetime (POSIXct object) is a german bank holiday. It is used in addTarif
+The preprocessData script
+}
+\author{
+Timo Wagner, \email{wagnertimo@gmx.de}
+
+It contains main and helper functions to preprocess the data which has been scraped @references scrapeData
+Mainly it approximates the 15min operating reserve calls into a finer resolution of 1min to allow a more realistic represention than the average values.
+
+Some useful keyboard shortcuts for package authoring:
+
+ Build and Reload Package:  'Cmd + Shift + B'
+ Check Package:             'Cmd + Shift + E'
+ Test Package:              'Cmd + Shift + T'
+
+---------------------------------------------------------
+
+HELPER FUNCTIONS
+
+
+This helper method states if the given datetime (POSIXct object) is a german bank holiday. It is used in @seealso addTarif
 }

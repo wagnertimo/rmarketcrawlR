@@ -16,21 +16,7 @@ a modified data.frame containing the DateTime (as POSIXct object), neg_MW (negat
 This method transforms the original retrieved operating reserve calls into a smaller (less variables) data.frame.
 }
 \details{
-The preprocessData script
-}
-\author{
-Timo Wagner, \email{wagnertimo@gmx.de}
-
-It contains main and helper functions to preprocess the data which has been scraped @references scrapeData
-Mainly it approximates the 15min operating reserve calls into a finer resolution of 1min to allow a more realistic represention than the average values.
-
-Some useful keyboard shortcuts for package authoring:
-
- Build and Reload Package:  'Cmd + Shift + B'
- Check Package:             'Cmd + Shift + E'
- Test Package:              'Cmd + Shift + T'
-
 ---------------------------------------------------------
 
-HELPER FUNCTIONS
+MAIN FUNCTIONS
 }

@@ -60,14 +60,14 @@ plotAVGMWvs4secMW <- function(dataframe) {
 
 #' @title plotCorrectedNeeds
 #'
-#' @description This method plots the 1min average of the operating reserve needs, 15min negative and positive needs, as well as the 15min calls against the original 4sec operating reserve needs
+#' @description This method plots the 1min average of the operating reserve needs, 15min negative and positive needs, as well as the 15min calls against the corrected 1min needs to approximate the 1min calls.
 #'
-#' @param dataframe - data.frame with the operating reserve needs (in MW), and the averages (1min, 15min neg. and pos.) operating reserve needs and the 15min calls and the corrected needs.
+#' @param dataframe - data.frame with the operating reserve needs (in MW), and the averages (1min, 15min neg. and pos.) operating reserve needs and the 15min calls and the corrected needs (variable Corrected).
 #'
 #' @return a line chart with the averages of operating reserve needs (grey)...
 #'
 #' @examples
-#' dataframe <- approxOperatingReserveCalls(s.needs, s.calls)
+#' dataframe <- approximateCalls(s.needs, s.calls)
 #' plotCorrectedNeeds(dataframe)
 #'
 #' @export
@@ -100,4 +100,39 @@ plotCorrectedNeeds <- function(dataframe){
 
 
 
+#' @title plotApproximatedData
+#'
+#' @description This method plots the 1min average of the operating reserve needs, 15min negative and positive needs, as well as the 15min
+#'
+#' @param dataframe - data.frame with the averages (15min of neg. and pos.) of the operating reserve needs and the 15min calls and the approximated 1min calls (avg_1min_MW).
+#'
+#' @return a line chart
+#'
+#' @examples
+#' dataframe <- approximateCallsInRecursion(s.needs, s.calls)
+#' plotApproximatedData(dataframe)
+#'
+#' @export
+#'
+plotApproximatedData <- function(dataframe){
 
+  library(ggplot2)
+
+  g2 <- ggplot(dataframe, aes(DateTime)) +
+    # geom_line(aes(y = MW, colour = "MW")) +
+    geom_step(aes(y = avg_1min_MW, colour = "avg. 1min needs")) +
+    geom_step(aes(y = avg_15min_MW_NEG, colour = "avg. neg. 15min needs")) +
+    geom_step(aes(y = avg_15min_MW_POS, colour = "avg. pos. 15min needs")) +
+    geom_step(aes(y = neg_MW, colour = "avg. neg. calls")) +
+    geom_step(aes(y = pos_MW, colour = "avg. pos. calls")) +
+    scale_colour_manual(values = c("#79c5dc", "#fb7474", "#de1b1b", "#77d49c", "#ababab")) +
+    labs(x = "Date and Time", y = "Power (in MW)") +
+    ggtitle('Operating Reserve Needs') +
+    theme(plot.title = element_text(size = 20, face="bold", margin = margin(10, 0, 10, 0)),
+          axis.title.x = element_text(color="forestgreen", vjust=-0.35),
+          axis.title.y = element_text(color="cadetblue" , vjust=0.35)
+    ) +
+    scale_y_continuous(label = function(x){return(paste( x, " MW"))})
+
+  g2
+}
