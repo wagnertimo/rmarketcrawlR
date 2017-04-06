@@ -585,6 +585,9 @@ getOperatingReserveNeeds <- function(startDate, endDate) {
   # Subset the whole data.frame to the given time period
   df <- subset(df, Date >= as.Date(startDate, format = "%d.%m.%Y") & Date <= as.Date(endDate, format = "%d.%m.%Y"))
 
+  print(paste("[INFO]: getOperatingReserveNeeds - DONE"))
+
+
   return(df)
 
 }

@@ -94,7 +94,7 @@ s.a <- preprocessOperatingReserveAuctions(sample.auctions)
 
 # Choose a sample. Look in s.c, the 15min calls of the day (e.g. 01.01.2016) and get the observation number
 start <- 1 # start observation number of 15min calls (--> 49*15/60 gives the hour of the day)
-end <- 90   # end observation number of 15min calls (--> 49*15/60 gives the hour of the day)
+end <- 96   # end observation number of 15min calls (--> 49*15/60 gives the hour of the day)
 
 # The calculation chooses automatically the corresponding 4sec needs data to the chosen calls observation.
 df.needs <- s.n[(((start - 1)*225) + 1):(end*225),]
@@ -164,9 +164,8 @@ plotCorrectedNeeds(r)
 # Test matching for first 15min sample
 
 sample.app.calls <- t[1:15,]
-#s.a
 
-mwork <- getMarginalWorkPrice(sample.app.calls, s.a)
+mwork <- getMarginalWorkPrices(sample.app.calls, s.a)
 
 
 

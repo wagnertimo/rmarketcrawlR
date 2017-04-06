@@ -899,7 +899,7 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
 
   # split the data.frame on the cuttedTime variable 15min sections
   # creates a list
-  path <-  split(r, r[,1])
+  path <-  split(t.all, t.all[,1])
   # Init the merge data.frame
   res <- data.frame()
   # Init progress bar
@@ -962,6 +962,9 @@ getMarginalWorkPrices <- function(df, auctions) {
 
   library(dplyr)
 
+  print(paste("[INFO]: Called getMarginalWorkPrices"))
+
+
   # Add the Tarif to the calls
   df <- addTarif(df)
   # Add Direction NEG or POS to the calls
@@ -969,6 +972,9 @@ getMarginalWorkPrices <- function(df, auctions) {
 
   # Init the data.frame which saves all the marginal work prices. Then do a column bind to the original data.frame
   arraym <- data.frame()
+
+  # Init progress bar
+  pb <- txtProgressBar(min = 0, max = nrow(df), style = 3)
 
   # for ever approx. 1min call match auction bids and compute the marginal work price
   for(i in 1:nrow(df)) {
@@ -989,12 +995,19 @@ getMarginalWorkPrices <- function(df, auctions) {
 
     # Store the work price of the auction in an array
     arraym <- rbind(arraym, ss$m)
-
+    # update progress bar
+    setTxtProgressBar(pb, i)
   }
+
+  # CLose the progress bar
+  close(pb)
 
   # Give it the right name and bind it as a new column to the input data.frame
   colnames(arraym) <- c("marginalWorkPrice")
   df <- cbind(df,arraym)
+
+  print(paste("[INFO]: getMarginalWorkPrices - DONE"))
+
 
   return(df)
 
