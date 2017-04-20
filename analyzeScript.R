@@ -78,9 +78,23 @@ df.prep.needs.2016 <- preprocessOperatingReserveNeeds(df.needs.2016)
 
 
 
+#'------------------------------------------------------------------------------------------------------
+#'
+#' Start Operating Reserve Call Approximation
+#'
+#'------------------------------------------------------------------------------------------------------
+
+# Approximate the calls WITH RECURSION
+df.aprx.calls.2016 <- approximateCallsInRecursion(df.prep.needs.2016, df.prep.calls.2016)
 
 
+#'------------------------------------------------------------------------------------------------------
+#'
+#' Start Calculating Marginal Work Price
+#'
+#'------------------------------------------------------------------------------------------------------
 
+mwork <- getMarginalWorkPrices(df.aprx.calls.2016, df.prep.auctions.2016)
 
 
 

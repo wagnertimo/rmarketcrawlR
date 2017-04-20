@@ -1031,7 +1031,6 @@ getMarginalWorkPrices <- function(df, auctions) {
 
   print(paste("[INFO]: Called getMarginalWorkPrices"))
 
-
   # Add the Tarif to the calls
   df <- addTarif(df)
   # Add Direction NEG or POS to the calls
