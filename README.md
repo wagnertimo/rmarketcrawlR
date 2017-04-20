@@ -31,5 +31,9 @@ There is a `preprocessData.R` script which nicely formats and prepares the scrap
 * `approximateCalls(preprocessed.needs, preprocessed.calls)`: approximates the operating reserve calls in a higher resolution (1 min instead of 15min). It considers some special cases which can occur. The case of **homogenity** where all 1min needs are homogenly positive (or negative) within a 15min section. This leads to a 15min average need for negative (positive) power of 0. But in the case that the 15min calls of negative (positive) power is not 0, the 1min needs have to be changed. Its smallest absolute value gets the negative (positive) value to fulfill the 15min average call in 1min.
 
 
+## Miscellaneous
+
+Data of operating reserve calls is available since 2011-06-27 at [https://www.regelleistung.net/ext/data/]
+
 
 Version v01 - 05.04.2017
