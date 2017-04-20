@@ -33,7 +33,7 @@ There is a `preprocessData.R` script which nicely formats and prepares the scrap
 
 ## Miscellaneous
 
-Data of operating reserve calls is available since 2011-06-27 at [https://www.regelleistung.net/ext/data/]
+Data of operating reserve calls are available since 2011-06-27 at https://www.regelleistung.net/ext/data/
 
 
 Version v01 - 05.04.2017
