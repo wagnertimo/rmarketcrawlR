@@ -626,14 +626,26 @@ countPositiveCrossingZerosForDF <- function(df) {
 #'
 preProcessOperatingReserveCalls <- function(df.calls) {
 
+  library(data.table)
+
+  print(paste("[INFO]: Called preProcessOperatingReserveCalls"))
+
   # Build variable DateTime out of Date and Time (as String) and neg_MW (with a negative num) and pos_MW
   # Time takes the value of "UHRZEIT.VON". The seconds are missing so add ":00"
-  df.calls$DateTime <- as.POSIXct(paste(dmy(df.calls$DATUM), paste(df.calls$UHRZEIT.VON, ":00", sep = ""), sep=" "), tz = "MET")
-  df.calls$pos_MW <- df.calls$BETR..POS
-  df.calls$neg_MW <- -df.calls$BETR..NEG
+
+  # TODO: Handle daylight savings CET and CEST --> Keep them as they are --> two 2 oclock hours
+  print(paste("[INFO]:preProcessOperatingReserveCalls - Formatting POSIXct DateTime object"))
+  df.calls$DateTime <- as.POSIXct(paste(ymd(df.calls$DATUM), paste(df.calls$UHRZEIT.VON, ":00", sep = ""), sep=" "), tz = "Europe/Berlin")
+  # Change, if there is an end of daylight savings in the time period, the two 2 oclock hours into CEST and CET
+
+  # needs data.table library --> sets new colomun names
+  setnames(df.calls, "BETR..POS", "pos_MW")
+  setnames(df.calls, "BETR..NEG", "neg_MW")
 
   keeps <- c("DateTime", "neg_MW", "pos_MW")
   #keeps <- c("DateTime", "neg_MW", "pos_MW")
+
+  print(paste("[INFO]: preProcessOperatingReserveCalls - DONE"))
 
   return(df.calls[, keeps])
 
@@ -653,14 +665,54 @@ preProcessOperatingReserveCalls <- function(df.calls) {
 #'
 preprocessOperatingReserveNeeds <- function(df.needs) {
 
+  library(data.table)
+  library(dplyr)
+  library(magrittr)
+
+  print(paste("[INFO]: Called preprocessOperatingReserveNeeds"))
+
   # Build up a Date-Time object POSIXct for easier handling. Set the timezone to Middle Europe Time
   # format: e.g. 2017-30-12 00:00:04
-  df.needs$DateTime <- as.POSIXct(paste(df.needs$Date, df.needs$Time, sep=" "), tz = "MET")
+
+  # TODO: Handle daylight savings CET and CEST
+  # Change, if there is an end of daylight savings in the time period, the two 2 oclock hours 2A and 2B into CEST and CET
+  print(paste("[INFO]: preprocessOperatingReserveNeeds - Changing factor variable Time to character"))
+  df.needs$Time <- as.character(df.needs$Time)
+
+  # Find all rows with Time string variable starting with "2A" or "2B"and mutate its value by adding a "02" and concat it with its own minutes and seconds by splitting the string.
+  print(paste("[INFO]: preprocessOperatingReserveNeeds - Changing character string of daylight saving times"))
+  df.needs[df.needs$Time %like% "^2A" | df.needs$Time %like% "^2B",] %<>% mutate(Time = paste("02:",
+                                                                                              sapply(strsplit(Time, ":"), "[", 2),
+                                                                                              ":",
+                                                                                              sapply(strsplit(Time, ":"), "[", 3),
+                                                                                              sep = ""))
+
+  # This code block is omitted, no differentiation btwn 2hour at CEST and 2hour at CET
+  # 2A gets format 02:XX:XX CEST
+  # Find all rows with Time string variable starting with "2A" or "2B"and mutate its value by adding a "02" and concat it with its own minutes and seconds by splitting the string.
+  # df.needs[df.needs$Time %like% "^2A",] %<>% mutate(Time = paste("02:",
+  #                                                     sapply(strsplit(Time, ":"), "[", 2),
+  #                                                     ":",
+  #                                                     sapply(strsplit(Time, ":"), "[", 3),
+  #                                                     sep = ""))
+  #
+  # df.needs[df.needs$Time %like% "^2B",] %<>% mutate(Time = paste("02:",
+  #                                                    sapply(strsplit(Time, ":"), "[", 2),
+  #                                                    ":",
+  #                                                    sapply(strsplit(Time, ":"), "[", 3),
+  #                                                    " +0100",
+  #                                                    sep = ""))
+
+  # Then set the POSIXct datetime format
+  print(paste("[INFO]: preprocessOperatingReserveNeeds - Formatting POSIXct datetime"))
+  df.needs$DateTime <- as.POSIXct(paste(df.needs$Date, df.needs$Time, sep=" "), tz = "Europe/Berlin")
 
   # Not sure when and if needed. This variable is redundant
   # df.needs$Direction <- ifelse(df.needs$MW < 0, "NEG", "POS")
 
   drops <- c("Date", "Time", "Type")
+
+  print(paste("[INFO]: preprocessOperatingReserveNeeds - DONE"))
 
   return(df.needs[ , !(names(df.needs) %in% drops)])
 
@@ -681,10 +733,14 @@ addTarif <- function(df) {
 
   library(lubridate)
 
+  print(paste("[INFO]: Called addTarif"))
+
   # HT is Mon - Fri 8 - 20 without bank holiday
   # NT is else
   # Get week day: 1 sunday 2 monday 3 tuesday 4 wednesday ... 7 saturday
   df$Tarif <- ifelse((hour(df$DateTime) >= 8 & hour(df$DateTime) < 20) & (wday(df$DateTime) > 1 & wday(df$DateTime) < 7) & !isGermanHoliday(df$DateTime), "HT", "NT")
+
+  print(paste("[INFO]: addTarif - DONE"))
 
   return(df)
 }
@@ -702,8 +758,12 @@ addTarif <- function(df) {
 #'
 addDirection <- function(df) {
 
+  print(paste("[INFO]: Called addDirection"))
+
   # Add a Directions column for later use. Being able to group
   df$Direction <- as.factor(ifelse(df$avg_1min_MW < 0, "NEG", "POS"))
+
+  print(paste("[INFO]: addDirection - DONE"))
 
   return(df)
 }
@@ -723,12 +783,17 @@ addDirection <- function(df) {
 #'
 preprocessOperatingReserveAuctions <- function(df.auctions) {
 
-  df.auctions$Tarif <- rapply(strsplit(as.character(sample.auctions$product_name), "_"), function(x) x[2])
-  df.auctions$Direction <- rapply(strsplit(as.character(sample.auctions$product_name), "_"), function(x) x[1])
+  print(paste("[INFO]: Called preprocessOperatingReserveAuctions"))
+
+  print(paste("[INFO]: preprocessOperatingReserveAuctions - Adding Tarif and Direction variables"))
+  df.auctions$Tarif <- rapply(strsplit(as.character(df.auctions$product_name), "_"), function(x) x[2])
+  df.auctions$Direction <- rapply(strsplit(as.character(df.auctions$product_name), "_"), function(x) x[1])
 
   drops <- c("offers_AT", "called_power_MW", "ap_payment_direction")
 
   return(df.auctions[ , !(names(df.auctions) %in% drops)])
+
+  print(paste("[INFO]: preprocessOperatingReserveAuctions - DONE"))
 
 }
 
@@ -846,6 +911,8 @@ approximateCalls <- function(df.needs, df.calls) {
   # Formatting
   # remove the 15min cuttedTime for better visuality
   # res <- res[, !(names(res) %in% c("cuttedTime"))]
+
+  print(paste("[INFO]: approximateCalls - DONE"))
 
   return(res)
 
@@ -975,6 +1042,8 @@ getMarginalWorkPrices <- function(df, auctions) {
 
   # Init progress bar
   pb <- txtProgressBar(min = 0, max = nrow(df), style = 3)
+
+  print(paste("[INFO]: getMarginalWorkPrices - Starting to match every minute with auctions and calculate marginal price"))
 
   # for ever approx. 1min call match auction bids and compute the marginal work price
   for(i in 1:nrow(df)) {

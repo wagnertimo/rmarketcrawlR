@@ -4,7 +4,7 @@
 \alias{build_df_rl_calls_auctions}
 \title{---------------------------------------------------------}
 \usage{
-build_df_rl_calls_auctions(response_content, fileName)
+build_df_rl_calls_auctions(response_content, case, fileName)
 }
 \description{
 ---------------------------------------------------------

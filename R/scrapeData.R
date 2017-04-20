@@ -31,6 +31,9 @@
 #'
 #' @return a text content of a POST response. It has to be formatted @seealso preprocess_rl_calls.
 #'
+#'
+#' @export
+#'
 scrape_rl_calls <- function(date_from, date_to, uenb_type, rl_type) {
 
   library(httr)
@@ -56,6 +59,9 @@ scrape_rl_calls <- function(date_from, date_to, uenb_type, rl_type) {
 
 #' This function handles the firstly needed preprocessing in the crawling step. It just formats the POST response of @seealso scrape_rl_calls.
 #' Further preprocessing is taken by the functions in the @seealso preprocessData.R script.
+#'
+#' @export
+#'
 preprocess_rl_calls <- function(response_content) {
 
   library(xml2)
@@ -79,6 +85,9 @@ preprocess_rl_calls <- function(response_content) {
 
 # This method is used to build a data.frame with monthly date time periods because the calls can only be retrieved within a month.
 # Therefore a input time period has to be split in monthly time periods.
+#'
+#' @export
+#'
 getDatesArrayOfMonths <- function(d1.start, d1.end) {
 
   library(lubridate)
@@ -237,9 +246,10 @@ callGETforAuctionResults <- function(auctionId) {
 #
 # # TODO improve this function --> causes arbitrary errors while writing and reading in the temp csv file
 #
-build_df_rl_calls_auctions <- function(response_content, fileName) {
-
-
+#'
+#' @export
+#'
+build_df_rl_calls_auctions <- function(response_content, case, fileName) {
 
   # Write a temporary csv file out of the preprocessed response data.
   # This whole approach with the temp.csv file allows to process bigger files.
@@ -248,7 +258,7 @@ build_df_rl_calls_auctions <- function(response_content, fileName) {
   write.csv(response_content, file = fileName, eol = "\n")
 
   # This if statement builds the data.frame for the operating reserve calls
-  if(fileName == "temp.csv") {
+  if(case == "calls") {
 
     print(paste("[INFO]: build_rl_calls_auctions - Called for Reserve Calls. Read in file"))
 
@@ -258,18 +268,26 @@ build_df_rl_calls_auctions <- function(response_content, fileName) {
     # Therefore the read in function uses the parameters:
     #     quote = "" (get rid of parenthesis)
     #     skip = 1 (to get rid off the extra line at the beginning)
-    df <- read.csv(file = fileName, header = TRUE, sep = ";", dec = ",", na.strings = c("","-"), quote = "", skip = 1)
+    df <- read.csv2(file = fileName, header = TRUE, sep = ";", dec = ",", na.strings = c("","-"), quote = "", skip = 1)
 
     # Rename the first date column which has a cryptic name because of the "1",)
     colnames(df)[1] <- "DATUM"
 
+    # --> get rid of not needed columns and format variables. BETR..NEG and BETR..POS are numeric values. As factors they caused a problem
+    df <- df[, c("DATUM", "UHRZEIT.VON", "BETR..NEG", "BETR..POS")]
+
+    df$DATUM <- as.Date(df$DATUM, "%d.%m.%Y")
+    # Change the number style
+    df$BETR..NEG <- -as.numeric(formatGermanNumber(df$BETR..NEG))
+    df$BETR..POS <- as.numeric(formatGermanNumber(df$BETR..POS))
+
   }
   # This if statement builds the data.frame for the operating reserve auctions
-  else if(fileName == "temp2.csv") {
+  else if(case == "auctions") {
 
     print(paste("[INFO]: build_rl_calls_auctions - Called for Reserve Auctions. Read in file"))
 
-    df <- read.csv(file = "temp2.csv",
+    df <- read.csv(file = fileName,
                    header = TRUE,
                    sep = ";",
                    dec = ",",
@@ -293,13 +311,22 @@ build_df_rl_calls_auctions <- function(response_content, fileName) {
 
   # DELETE temporary files
   #
-  invisible(if (file.exists("temp.csv")) file.remove("temp.csv"))
-  invisible(if (file.exists("temp2.csv")) file.remove("temp2.csv"))
-
-
+  invisible(if (file.exists(fileName)) file.remove(fileName))
+  invisible(if (file.exists(fileName)) file.remove(fileName))
 
   return(df)
 
+}
+
+
+# This helper method converts a german number into a classical number systems with just a point as a decimal limiter
+# German number is defined: commas as decimal limiter and points as thounds seperator (e.g. 133.456.298,0433)
+# Classical number is defined: only a point as decimal delimitir (e.g. 133456298.0433)
+#
+formatGermanNumber <- function(x){
+  z <- gsub("[^0-9,.]", "", x)
+  z <- gsub("\\.", "", z)
+  gsub(",", ".", z)
 }
 
 
@@ -325,7 +352,9 @@ scrape_rl_need_month <- function(date_code) {
   print(paste("[INFO]: scrape_rl_need_month - Scrape data for ", date_code))
 
   # Create a temporary file to store the downloaded zip file in it
-  temp <- tempfile()
+  tempFileName <- paste("needs_", date_code, sep = "")
+  print(tempFileName)
+  temp <- tempfile(tempFileName, "data/needs")
   url = paste('https://www.transnetbw.de/files/bis/srlbedarf/', date_code, '_SRL_Bedarf.zip', sep = "");
 
   print(paste("[INFO]: scrape_rl_need_month - Download data for ", date_code))
@@ -335,14 +364,38 @@ scrape_rl_need_month <- function(date_code) {
   print(paste("[INFO]: scrape_rl_need_month - Read csv for ", date_code))
 
   # Unzip in read in the csv file into a data.frame
-  dft <-  read.csv(unz(temp, paste(date_code, "_SRL_Bedarf.csv", sep = "")), , header = FALSE, sep = ",", dec = ".")
+  #
+  # TODO Handle exceptions of 01.2017, 11.2016 and 04.2016 --> at this date codes there is no datacode in the unziped file name just "SRL_Bedarf.csv"
+  #       --> Maybe even more month!
+  #       --> So do a step by step process
+  #           ---> unzip file by getting the the first file. Then get the name of the csv and read it in. Delete all files after use.
+  #
+
+  # Get the filename of the zip. It has a strange cryptic ending concatenated, no glue why
+  zipF <- paste("data/needs/", list.files("data/needs")[1], sep = "")
+
+  # unzip the temp file
+  unzip(zipF, exdir = "data/needs/")
+
+  # delete the temporary file. Not needed anymore after csv is unzipped
+  file.remove(zipF)
+
+  # get the csv file name of the unzipped temp file. This step is important because sometimes the filname changes.
+  # So no faster process is possible
+  csvf <- paste("data/needs/", list.files("data/needs")[1], sep = "")
+
+  # Read in the unzipped csv file
+  print(paste("[INFO]: scrape_rl_need_month - Read in csv file for ", date_code))
+  dft <-  read.csv(csvf, header = FALSE, sep = ",", dec = ".")
+
+  # delete the csv file
+  print(paste("[INFO]: scrape_rl_need_month - Delete csv file for ", date_code))
+  file.remove(csvf)
+
   # Since there are no headers, include appropriate header names
   colnames(dft) <- c("Date", "Time", "Type", "MW")
 
-  print(paste("[INFO]: scrape_rl_need_month - Delete temp file for ", date_code))
 
-  # delete the temporary file
-  rm(temp)
 
   return(dft)
 
@@ -406,13 +459,23 @@ buildDataFrameForDateCodes <- function(dateCodes) {
 
   print(paste("[INFO]: buildDataFrameForDateCodes - Looping through dateCodes to scrape data"))
 
+  # Init progress bar
+  pb <- txtProgressBar(min = 0, max = length(dateCodes), style = 3)
+
   # Init
   dfall <- data.frame()
   for(i in 1:length(dateCodes)){
 
     df <- scrape_rl_need_month(dateCodes[i])
     dfall <- rbind(dfall,df)
+
+    # update progress bar
+    setTxtProgressBar(pb, i)
   }
+
+  # CLose the progress bar
+  close(pb)
+
   # Change the factor Date variable to an actual Date Type
   dfall$Date <- as.Date(dfall$Date, format = "%Y/%m/%d")
 
@@ -420,6 +483,54 @@ buildDataFrameForDateCodes <- function(dateCodes) {
 }
 
 
+
+
+
+
+#' @title mergeCSVFilesOfNeeds
+#'
+#' @description This method merges the monthly operating reserve needs which had been downloaded and unzip from the site https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/
+#'
+#' @param year - the year where all 12 monthly data are bind together into one data.frame
+#'
+#' @return A data.frame of the merged 12 month operating reserve needs (Date, Time, Type, MW)
+#'
+#' @examples
+#' # The 12 month data has already been unziped and stored into ../data/needs
+#' df.needs.2016 <- mergeCSVFilesOfNeeds(2016)
+#'
+#' @export
+#'
+mergeCSVFilesOfNeeds <- function(year) {
+
+  library(lubridate)
+
+  print(paste("[INFO]: Called mergeCSVFilesOfNeeds"))
+
+  # inint the merging data.frame
+  df <- data.frame()
+
+  for(month in 1:12){
+
+    print(paste("[INFO]: mergeCSVFilesOfNeeds - Merging for ", month, " ", year))
+
+    # define the path where the file can be found
+    path <-  paste("data/needs/", year, preceedingZerosForMonths(month), "_SRL_Bedarf.csv", sep = "")
+    # load the data
+    mydata = read.csv(path, header = F)
+    # set the correct column names
+    colnames(mydata) <- c("Date","Time","Type","MW")
+    # bind the data row wise
+    df <- rbind(df, mydata)
+  }
+
+  # format the Date variable
+  df$Date <- as.Date(df$Date, format = "%Y/%m/%d")
+
+  print(paste("[INFO]: mergeCSVFilesOfNeeds - DONE"))
+
+  return(df)
+}
 
 
 #'---------------------------------------------------------
@@ -462,7 +573,8 @@ getOperatingReserveAuctions <- function(date_from, date_to, productId) {
 
   # Get the first (initial) auction data and add it to the df_auctions data.frame
   response_content <- callGETforAuctionResults(auctionIds[1])
-  df_auctions <- build_df_rl_calls_auctions(response_content, "temp2.csv")
+  filename <- paste("data/auctions/temp_auctions_", auctionIds[1], sep = "")
+  df_auctions <- build_df_rl_calls_auctions(response_content, "auctions", filename)
 
   # If only one auctionId (= just auction data of one day) is called, then stop and return the initial auction data
   if(length(auctionIds) > 1) {
@@ -475,7 +587,8 @@ getOperatingReserveAuctions <- function(date_from, date_to, productId) {
 
         response_content <- callGETforAuctionResults(auctionIds[j])
         # TODO improve this function --> causes arbitrary errors while writing and reading in the temp csv file
-        df <- build_df_rl_calls_auctions(response_content, "temp2.csv")
+        filename <- paste("data/auctions/temp_auctions_", auctionIds[j], sep = "")
+        df <- build_df_rl_calls_auctions(response_content, "auctions", filename)
 
         df_auctions <- rbind(df_auctions, df)
 
@@ -490,6 +603,9 @@ getOperatingReserveAuctions <- function(date_from, date_to, productId) {
 
   # CLose the progress bar
   close(pb)
+
+  # Delete All temporary files in the data/auctions directory
+  #invisible(do.call(file.remove, list(list.files("data/auctions", full.names = TRUE))))
 
   print(paste("[INFO]: getOperatingReserveAuctions - DONE"))
 
@@ -538,9 +654,12 @@ getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
     r <- scrape_rl_calls(dates[e,1], dates[e,2], uenb_type, rl_type)
     # Preprocess the response
     p <- preprocess_rl_calls(r)
+
+
     # Build up the data.frame
     # TODO improve this function --> causes arbitrary errors while writing and reading in the temp csv file
-    d <- build_df_rl_calls_auctions(p, "temp.csv")
+    filename <- paste("data/calls/temp_calls_", e, sep = "")
+    d <- build_df_rl_calls_auctions(p, "calls", filename)
 
     df <- rbind(df, d)
 
@@ -551,6 +670,8 @@ getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
 
   # CLose the progress bar
   close(pb)
+  # Delete All temporary files in the data/calls directory
+  #invisible(do.call(file.remove, list(list.files("data/calls", full.names = TRUE))))
 
   print(paste("[INFO]: getOperatingReserveCalls - DONE"))
 
@@ -579,6 +700,9 @@ getOperatingReserveNeeds <- function(startDate, endDate) {
 
   # Extract all the dataCodes to build the whole data.frame by downloading the zip file
   df <- buildDataFrameForDateCodes(getDateCodesArray(startDate, endDate))
+
+  # Delete All temporary files in the data/calls directory
+  #invisible(do.call(file.remove, list(list.files("data/needs", full.names = TRUE))))
 
   print(paste("[INFO]: getOperatingReserveNeeds - Subset the data.frame"))
 

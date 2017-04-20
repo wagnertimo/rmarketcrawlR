@@ -27,29 +27,70 @@ getTheMeanPowerPrice(df, 'NEG_NT', '20.03.2017')
 
 #'------------------------------------------------------------------------------------------------------
 #'
-#' TODO: IMPROVE THE CRAWLING FUNCTION. SOMETIMES ERROR OCCURS. SEEMS TO BE A FILE READ/WRITE PROBLEM
-#'       ---> MAYBE ANOTHER APPROACH TO NOT WRITE AND READ A TEMP FILE WOULD BE A SOLUTION
+#' TODO: IMPROVE THE CRAWLING FUNCTION. SOMETIMES ERROR OCCURS.
+#'       ---> Error occurs for operating reserve needs (e.g. on 01.2017, 11.2016 and 04.2016) due to the unziped file name
+#'       ---> the date code (e.g. 201701) is missing in the file name so there is just "SRL_Bedarf.csv"
+#'
+#'       ---> CHANGE CRAWLER FUNCTION: download file, unzip it, change unziped file name to dateCode and then read in csv
+#'
+#'       DONE
 #'
 #'------------------------------------------------------------------------------------------------------
 
-# Get the operating reserve needs and calls as well as the weekly auctions
-# Raw data from regelleistung.net and transnetbw.de (4sec needs)
-
-sample.needs <- getOperatingReserveNeeds("01.01.2016", "01.01.2016")
-sample.calls <- getOperatingReserveCalls('01.01.2016', '01.01.2016', '6', 'SRL')
-sample.auctions <- getOperatingReserveAuctions('28.12.2015', '07.01.2016', '2')
 
 
-s.c <- preProcessOperatingReserveCalls(sample.calls)
-s.n <- preprocessOperatingReserveNeeds(sample.needs)
-s.a <- preprocessOperatingReserveAuctions(sample.auctions)
+# TODO: calls seem to have some NA (or - ) for the variable df.calls$BETR..NEG. That's why everything is NA
+#       ---> filter for the NA and find a solution how to handle this
+#
+#       DONE --> needed to format the BETR..NEG and BETR..POS variable from factor to numeric with converting the german number style
+#
+
+
+
+#'------------------------------------------------------------------------------------------------------
+#'
+#' Prepare a sample for 2015
+#'
+#'------------------------------------------------------------------------------------------------------
+
+df.needs.2015 <- getOperatingReserveNeeds('01.01.2015', '31.12.2015')
+df.calls.2015 <- getOperatingReserveCalls('01.01.2015', '31.12.2015', '6', 'SRL')
+# Weekly auctions always from monday till sunday!!
+df.auctions.2015 <- getOperatingReserveAuctions('29.12.2014', '03.01.2016', '2')
+
+
+
+#'------------------------------------------------------------------------------------------------------
+#'
+#' Prepare a sample for 2016
+#'
+#'------------------------------------------------------------------------------------------------------
+
+# Crawl the raw data for calls, auctions, needs
+df.needs.2016 <- getOperatingReserveNeeds('01.01.2016', '31.12.2016')
+df.calls.2016 <- getOperatingReserveCalls('01.01.2016', '31.12.2016', '6', 'SRL')
+df.auctions.2016 <- getOperatingReserveAuctions('28.12.2015', '01.01.2017', '2')
+
+# Preprocess the raw data for calls, auctions, needs
+df.prep.calls.2016 <- preProcessOperatingReserveCalls(df.calls.2016)
+df.prep.auctions.2016 <- preprocessOperatingReserveAuctions(df.auctions.2016)
+df.prep.needs.2016 <- preprocessOperatingReserveNeeds(df.needs.2016)
+
+
+
+
+
+
+
+
+
 
 
 
 #'------------------------------------------------------------------------------------------------------
 #'
 #' Two special cases:
-#' 1. Homogenity: only negative (positive) needs (homogenic needs) but with positive (negative ) calls (in both direction)
+#' 1. Homogenity: only negative (positive) needs (homogenic needs) but with positive (negative) calls (in both direction)
 #' 2. CrossingZero: With the correction negative (positive) needs are too much corrected and go positive (negative)
 #'
 #'------------------------------------------------------------------------------------------------------
@@ -73,27 +114,60 @@ s.a <- preprocessOperatingReserveAuctions(sample.auctions)
 #' Occurs e.g. 2016-01-01 12:15:00 -2016-01-01 12:30:00 --> 50th obs of the 15min calls of 01.01.2016
 #' --> neg homogenity but second smallest absolute value crosses zero with correction
 #'
-#' * One rule could be to set all crossing values to 0 --> correction value gets higher because the difference has now to be distributed between less data points --> and this could lead to more and more recursive crossing values
-#' * after initial correction recursively adjust the corrections till the 15min average values of the corrected needs and the calls are identical
-#'
-#' Choose the recursive approach:
+#' Recursive approach:
 #' Crossers keep their new value and new counts of NEG and POS and new calculations of avg_15min_MW_NEG and avg_15min_MW_POS are calculated
-#' Recursion stops when those two averages match the neg_MW and pos_MW (rounding and/or computational errors) or the new calculated NEG and POS counts are the same as the previous ones
+#' Recursion stops when those two averages match the neg_MW and pos_MW (rounding and/or computational errors)
 #'
 #' test sample:
 #' look in code snippet below (DETECT CORSSINGZERO CASES) to identify the crossers and set a sample
 #' e.g. start = end 61 --> negative CZ 2 times
+#'
+
 
 # -------------
 # DONE
 # -------------
 
 
+#'-------------------------------------------------------------------------------------------
+# DETECT CORSSINGZERO CASES
+
+# Count for every 15min section the number of crossings
+# r has to be a data.frame in the type after calling the old approximate Call function with the Corrected colum and Homogenity case
+r <- countCrossingZeros(r)
+# mark negative and positive crossings
+r <- markCrossingZero(r)
+
+# subset all negative and positive crossings (crossings of smallest absolute values in a homogen 15min section are not included)
+# list all crossings --> datetime (1min), avg_1min_MW, Corrected, neg_CZ, pos_CZ
+library(dplyr)
+
+# subset all negative and positive crossings
+crossings.all <- select(filter(r, neg_CZ == 1 | pos_CZ == 1), DateTime, avg_1min_MW, Corrected, neg_CZ, pos_CZ, n_neg_CZ, n_pos_CZ)
+# subset only negative CZ
+crossings.neg <- select(filter(r, neg_CZ == 1), DateTime, avg_1min_MW, Corrected, neg_CZ, n_neg_CZ)
+# subset only positive CZ
+crossings.pos <- select(filter(r, pos_CZ == 1), DateTime, avg_1min_MW, Corrected, pos_CZ, n_pos_CZ)
+
+# set the element (observation) of the data.frame which has to be analyzed
+d <- crossings.neg[3,]
+
+# Plot a 15min section of the filtered data.frame which contains a CrossingZero element (1min observation)
+plotCorrectedNeeds(filter(r, cuttedTime == get15minSection(d$DateTime)))
+
+
+
+
 # --------------------------------------------------------------------------------
 # Sample
 
-# Choose a sample. Look in s.c, the 15min calls of the day (e.g. 01.01.2016) and get the observation number
-start <- 1 # start observation number of 15min calls (--> 49*15/60 gives the hour of the day)
+s.n <- df.prep.needs.2016
+s.c <- df.prep.calls.2016
+s.a <- df.prep.auctions.2016
+
+# Choose a sample.
+# Look in s.c, the 15min calls of the day (e.g. 01.01.2016) and get the observation number
+start <- 1  # start observation number of 15min calls (--> 49*15/60 gives the hour of the day)
 end <- 96   # end observation number of 15min calls (--> 49*15/60 gives the hour of the day)
 
 # The calculation chooses automatically the corresponding 4sec needs data to the chosen calls observation.
@@ -102,11 +176,10 @@ df.calls <- s.c[start:end,]
 
 
 # --------------------------------------------------------------------------------
-# Approximate Old
+# Approximate Old --> Only homogenity as a special cases is handled. NO ZEROCROSSING till now
 
-# Approximate the calls --> At this time only homogenity as special cases handled. NO ZEROCROSSING till now
+# Approximate the calls
 r <- approximateCalls(df.needs, df.calls)
-
 
 # Sanity checks
 # 15min averages ==? 15min calls
@@ -116,20 +189,17 @@ plotCorrectedNeeds(r)
 
 
 # --------------------------------------------------------------------------------
-# Approximate New
+# Approximate New --> At this time all cases are handled (Homogenity and CrossingZero)
 
-# Approximate the calls WITH RECURSION --> At this time all cases are handled (Homogenity and CrossingZero)
+# Approximate the calls WITH RECURSION
 t <- approximateCallsInRecursion(df.needs, df.calls)
-
 
 # Sanity checks
 # 15min averages ==? 15min calls
 sum(t[t$avg_1min_MW < 0 & t$DateTime < "2016-01-01 15:15:00", ]$avg_1min_MW) / 15
 sum(t[t$avg_1min_MW < 0 & t$DateTime >= "2016-01-01 15:15:00", ]$avg_1min_MW) / 15
-
-# This plot does not use Corrected since this variable is omitted in the recursion
+# This plot does not use the variable Corrected since it is omitted in the recursion
 plotApproximatedData(t)
-
 # Here a merge with the old approximation function
 joint <- merge(r[,!(names(r) %in% c("Corrected"))], select(t, DateTime,Corrected = avg_1min_MW))
 plotCorrectedNeeds(joint)
@@ -166,57 +236,6 @@ plotCorrectedNeeds(r)
 sample.app.calls <- t[1:15,]
 
 mwork <- getMarginalWorkPrices(sample.app.calls, s.a)
-
-
-
-
-
-
-#'-------------------------------------------------------------------------------------------
-# DETECT CORSSINGZERO CASES
-
-# Count for every 15min section the number of crossings
-# r has to be a data.frame in the type after calling the old approximate Call function with the Corrected colum and Homogenity case
-r <- countCrossingZeros(r)
-# mark negative and positive crossings
-r <- markCrossingZero(r)
-
-# subset all negative and positive crossings (crossings of smallest absolute values in a homogen 15min section are not included)
-# list all crossings --> datetime (1min), avg_1min_MW, Corrected, neg_CZ, pos_CZ
-library(dplyr)
-
-# subset all negative and positive crossings
-crossings.all <- select(filter(r, neg_CZ == 1 | pos_CZ == 1), DateTime, avg_1min_MW, Corrected, neg_CZ, pos_CZ, n_neg_CZ, n_pos_CZ)
-# subset only negative CZ
-crossings.neg <- select(filter(r, neg_CZ == 1), DateTime, avg_1min_MW, Corrected, neg_CZ, n_neg_CZ)
-# subset only positive CZ
-crossings.pos <- select(filter(r, pos_CZ == 1), DateTime, avg_1min_MW, Corrected, pos_CZ, n_pos_CZ)
-
-# set the element (observation) of the data.frame which has to be analyzed
-d <- crossings.neg[3,]
-
-# Plot a 15min section of the filtered data.frame which contains a CrossingZero element (1min observation)
-plotCorrectedNeeds(filter(r, cuttedTime == get15minSection(d$DateTime)))
-
-
-# This helper method returns a 15min section DateTime object (POSIXct object) to the corresponding input DateTime object (POISXct object)
-get15minSection <- function(dateTime){
-  library(lubridate)
-
-  m <- lubridate::minute(dateTime)
-  minute(dateTime) <- m - (m %% 15)
-
-
-  return(dateTime)
-
-}
-
-#'----------------------------------------------------------------------------------------------------------
-
-
-
-
-
 
 
 
