@@ -8,9 +8,17 @@ It is build as part of my master thesis to analyze the calling probability of op
 
 ## Get Started
 
+### Installing
+
+You can easily install this R package by using the `install_github()` function from the `devtools` package:
+
+```r
+library(devtools)
+install_github("wagnertimo/rmarketcrawlR")
+```
 ### Library dependencies
 
-Before using this R package, please check that you have installed the following R packages:
+Before using this R package, please check that you have installed the following R packages. During installation the dependencies should have been installed:
 
 - `httr`
 - `xml2`
@@ -23,15 +31,6 @@ Before using this R package, please check that you have installed the following 
 - `magrittr`
 - `data.table`
 - `ggplot2`
-
-### Installing
-
-You can easily install this R package by using the `install_github()` function from the `devtools` package:
-
-```r
-library(devtools)
-install_github("wagnertimo/rmarketcrawlR")
-```
 
 
 ## Functionality

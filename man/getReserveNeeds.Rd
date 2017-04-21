@@ -22,29 +22,7 @@ The method also preprocesses the data in a nice format.
 Variables in the returned data.frame:  - MW (numeric). The signed power needs for every 4sec. Point as decimal delimiter
                                        - DateTime (POSIXct). DateTime object in Y-m-d h:m:s format. Be aware of daylight saving. 4sec time windows.
 }
-\details{
-The minScript
-}
 \examples{
 needs <- getReserveNeeds("30.12.2015", "02.01.2016")
 
-}
-\references{
-@seealso scrapeData.R
-
-@seealso preprocessData.R
-
-Some useful keyboard shortcuts for package authoring:
-
- Build and Reload Package:  'Cmd + Shift + B'
- Check Package:             'Cmd + Shift + E'
- Test Package:              'Cmd + Shift + T'
-}
-\author{
-Timo Wagner, \email{wagnertimo@gmx.de}
-
-This sscript file contains a minimal version with all necessary functions to crawl, preprocess, callculate the approximated 1min operating reserve calls and calculate the marginal workprices.
-All printings in the console are omitted.
-
-TODO: Performance testings: --> parallel computing and maybe substitution of for loops with lapply() functions
 }

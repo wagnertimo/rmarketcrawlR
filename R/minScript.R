@@ -18,7 +18,19 @@
 #'  Test Package:              'Cmd + Shift + T'
 #'
 
-
+#' @title setLogging
+#'
+#' @description This function sets a global options variable called "logging" to TRUE OR FALSE. By default it is FALSE, so no logging is displayed.
+#'
+#' @param logger - A boolean variable. TRUE for printing out the logging outputs in the console.
+#'
+#'
+#' @export
+#'
+setLogging <- function(logger) {
+  options("logging" = logger)
+  ifelse(logger == TRUE, print("Outputs/logs will be displayed!"), print("No console outputs/logs will be displayed!"))
+}
 
 # -----------------------------------------------------------------------------------------------------------------------------------------
 # MAIN FUNCTION getReserveNeds
