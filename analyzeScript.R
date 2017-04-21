@@ -22,6 +22,35 @@ getTheMeanPowerPrice <- function(df, productType, dateFrom) {
 getTheMeanPowerPrice(df, 'NEG_NT', '20.03.2017')
 
 #'------------------------------------------------------------------------------------------------------
+#' Testing the production script file: minScript.R
+
+auctions.2016 <- getReserveAuctions('28.12.2015', '01.01.2017', '2')
+calls.2016 <- getReserveCalls('01.01.2016', '31.12.2016', '6', 'SRL')
+needs.2016 <- getReserveNeeds('01.01.2016', '31.12.2016')
+
+# sample the 2016 data
+start <- 1  # start observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
+end <- 8   # end observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
+
+needs <- needs.2016[(((start - 1)*225) + 1):(end*225),]
+calls <- calls.2016[start:end,]
+auctions <- auctions.2016
+
+
+
+approx.calls <- getOneMinuteCalls(needs,calls)
+
+mwork <- getMarginalWorkPrices(needs,calls,auctions)
+
+
+# Seems that 60 observations takes 60 secs. So every observation takes 1sec. For a year --> 146h ?!?!
+system.time(getMarginalWorkPrices(needs,calls,auctions))
+
+
+# Try parallel computing
+
+
+
 
 
 
@@ -69,6 +98,8 @@ df.auctions.2015 <- getOperatingReserveAuctions('29.12.2014', '03.01.2016', '2')
 # Crawl the raw data for calls, auctions, needs
 df.needs.2016 <- getOperatingReserveNeeds('01.01.2016', '31.12.2016')
 df.calls.2016 <- getOperatingReserveCalls('01.01.2016', '31.12.2016', '6', 'SRL')
+
+# TODO: Be aware of the sign for work price!!
 df.auctions.2016 <- getOperatingReserveAuctions('28.12.2015', '01.01.2017', '2')
 
 # Preprocess the raw data for calls, auctions, needs
@@ -247,14 +278,62 @@ plotCorrectedNeeds(r)
 
 # Test matching for first 15min sample
 
-sample.app.calls <- t[1:15,]
+sample.app.calls <- t[1:60,]
 
 mwork <- getMarginalWorkPrices(sample.app.calls, s.a)
 
 
 
 
+#'------------------------------------------------------------------------------------------------------
+#'
+#' Testing: Calculation of call probability for each possible marginal work price in data set (get min (for negative work prices) and max in data.frame)
+#'
+#'------------------------------------------------------------------------------------------------------
 
+
+# There are probs. for NEG_NT, NEG_HT and POS_NT, POS_HT
+# ---> subset on Tarif and Direction variables
+
+
+# Get min and max values of the marginal work prices. This sets the boundaries for the probabilities
+min.mwork <- min(mwork$marginalWorkPrice) # e.g. 32
+max.mwork <- max(mwork$marginalWorkPrice) # e.g. 774.6
+
+
+# Beginning at a value below the min will lead to 100% call probability !! Be aware of different tarifs
+
+# get the probability vector of the min max sequence
+tr <- getCallProbDataSet(mwork, min.mwork, max.mwork)
+# save the min max sequence in a vector to plot it against the corresponding probabilities
+tr2 <- seq(min.mwork, max.mwork)
+
+library(ggplot2)
+qplot(tr2,tr, geom="line")
+
+
+
+
+getCallProbForMarginalWorkPrice <- function(data, mwor) {
+
+  library(dplyr)
+
+  prob <- round(nrow(filter(data, marginalWorkPrice >= mwor))/nrow(data), digits = 2)
+
+
+  return(prob)
+}
+
+
+getCallProbDataSet <- function(data, min, max) {
+
+  df <- c()
+  for(i in seq(min, max)) {
+    df[i-min+1] <- getCallProbForMarginalWorkPrice(data, i)
+  }
+
+  return(df)
+}
 
 
 

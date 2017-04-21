@@ -312,7 +312,6 @@ build_df_rl_calls_auctions <- function(response_content, case, fileName) {
   # DELETE temporary files
   #
   invisible(if (file.exists(fileName)) file.remove(fileName))
-  invisible(if (file.exists(fileName)) file.remove(fileName))
 
   return(df)
 
@@ -353,7 +352,6 @@ scrape_rl_need_month <- function(date_code) {
 
   # Create a temporary file to store the downloaded zip file in it
   tempFileName <- paste("needs_", date_code, sep = "")
-  print(tempFileName)
   temp <- tempfile(tempFileName, "data/needs")
   url = paste('https://www.transnetbw.de/files/bis/srlbedarf/', date_code, '_SRL_Bedarf.zip', sep = "");
 

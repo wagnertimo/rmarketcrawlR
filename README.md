@@ -6,7 +6,36 @@
 This R package provides functions to crawl the german operating reserve market of the platform https://www.regelleistung.net and contains scripts to analyze this data.
 It is build as part of my master thesis to analyze the calling probability of operating reserve power depending on the offered work price. The aim is to predict such call probabilities, for improving existing optimization algorithms which relay on assumptions and are not very accurate.
 
+## Get Started
+
+### Library dependencies
+
+Before using this R package, please check that you have installed the following R packages:
+
+- `httr`
+- `xml2`
+- `XML`
+- `zoo`
+- `lubridate`
+- `timeDate`
+- `dplyr`
+- `tidyr`
+- `magrittr`
+- `data.table`
+- `ggplot2`
+
+### Installing
+
+You can easily install this R package by using the `install_github()` function from the `devtools` package:
+
+```r
+library(devtools)
+install_github("wagnertimo/rmarketcrawlR")
+```
+
+
 ## Functionality
+
 
 ### Scraping reserve data
 

@@ -789,7 +789,12 @@ preprocessOperatingReserveAuctions <- function(df.auctions) {
   df.auctions$Tarif <- rapply(strsplit(as.character(df.auctions$product_name), "_"), function(x) x[2])
   df.auctions$Direction <- rapply(strsplit(as.character(df.auctions$product_name), "_"), function(x) x[1])
 
-  drops <- c("offers_AT", "called_power_MW", "ap_payment_direction")
+  # Set the direction/sign of the work price --> ANBIETER_AN_NETZ signals a negative work price
+  df.auctions$work_price <- ifelse(df.auctions$ap_payment_direction == "ANBIETER_AN_NETZ", -df.auctions$work_price, df.auctions$work_price)
+
+
+  # ap_payment_direction
+  drops <- c("offers_AT", "called_power_MW", "ap_payment_direction", "product_name")
 
   return(df.auctions[ , !(names(df.auctions) %in% drops)])
 
@@ -1000,7 +1005,7 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
 
 
 
-#' @title getMarginalWorkPrice
+#' @title calcMarginalWorkPrices
 #'
 #' @description This recursive approach handles the special case of CrossingZero. It builds the data.frame with all needed variables to correct the operating reserve needs power for approximating the calls.
 #'
@@ -1025,7 +1030,7 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
 #'
 #' @export
 #'
-getMarginalWorkPrices <- function(df, auctions) {
+calcMarginalWorkPrices <- function(df, auctions) {
 
   library(dplyr)
 
