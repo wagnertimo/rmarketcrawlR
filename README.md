@@ -36,7 +36,6 @@ install_github("wagnertimo/rmarketcrawlR")
 
 ## Functionality
 
-
 ### Scraping reserve data
 
 The `scrapeData.R` script contains 3 main functions to provide the operating reserve power data (`rl_type`) from the transperant website of the four energy system providers (`uenb_type`). For more information about the method check out the documentation.
@@ -63,6 +62,7 @@ There is a `preprocessData.R` script which nicely formats and prepares the scrap
 ## Miscellaneous
 
 Data of operating reserve calls are available since 2011-06-27 at https://www.regelleistung.net/ext/data/
+Data of operating reserve needs (4sec data) are available since July 2010 at https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/.
 
 
 Version v01 - 05.04.2017
