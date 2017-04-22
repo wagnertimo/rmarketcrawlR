@@ -31,13 +31,26 @@ Before using this R package, please check that you have installed the following 
 - `magrittr`
 - `data.table`
 - `ggplot2`
+- `doParallel`
+- `foreach`
+
+### Get operating reserve power data
+
+There are three main functions which allows you to crawl operating reserve calls, needs and auction results of the german operating reserve market. The operating reserve power data (specified by the parameter `rl`) is provided by the transperant website (https://www.regelleistung.net) of the four energy system providers (specified by the parameter `uenb`):
+
+* `getReserveCalls(startDate, endDate, uenb, rl)`: It retrieves the 15min operating reserve calls for several products and providers (source: https://www.regelleistung.net/ext/data/). The data gets formatted. Checkout documentation for further information.
+
+* `getReserveAuctions(startDate, endDate, rl)`: It retrieves the operating reserve auction results (anonymous order list of energy providers; MOL) for a specific product and time period (source: https://www.regelleistung.net/ext/tender/). The data gets formatted. Checkout documentation for further information.
+
+* `getReserveNeeds(startDate, endDate)`: It retrieves the operating reserve needs for a specific time frame of the Netzregelverbund (NRV) based on a 4 sec resolution (source: https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/regelenergie-bedarf-und-abruf). The data gets formatted. Checkout documentation for further information.
+
 
 
 ## Functionality
 
 ### Scraping reserve data
 
-The `scrapeData.R` script contains 3 main functions to provide the operating reserve power data (`rl_type`) from the transperant website of the four energy system providers (`uenb_type`). For more information about the method check out the documentation.
+The `scrapeData.R` script contains 3 main functions to provide the operating reserve power data (`rl`) from the transperant website of the four energy system providers (`uenb_type`). For more information about the method check out the documentation.
 
 * `getOperatingReserveCalls(date_from, date_to, uenb_type, rl_type)`: It retrieves the 15min operating reserve calls for several products and providers. (source: https://www.regelleistung.net/ext/data/)
 
@@ -60,7 +73,8 @@ There is a `preprocessData.R` script which nicely formats and prepares the scrap
 
 ## Miscellaneous
 
-Data of operating reserve calls are available since 2011-06-27 at https://www.regelleistung.net/ext/data/
+Data of operating reserve calls are available since 2011-06-27 at https://www.regelleistung.net/ext/data/.
+
 Data of operating reserve needs (4sec data) are available since July 2010 at https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/.
 
 
