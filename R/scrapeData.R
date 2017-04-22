@@ -352,7 +352,7 @@ scrape_rl_need_month <- function(date_code) {
 
   # Create a temporary file to store the downloaded zip file in it
   tempFileName <- paste("needs_", date_code, sep = "")
-  temp <- tempfile(tempFileName, "data/needs")
+  temp <- tempfile(tempFileName)
   url = paste('https://www.transnetbw.de/files/bis/srlbedarf/', date_code, '_SRL_Bedarf.zip', sep = "");
 
   if(getOption("logging")) print(paste("[INFO]: scrape_rl_need_month - Download data for ", date_code))
@@ -370,17 +370,17 @@ scrape_rl_need_month <- function(date_code) {
   #
 
   # Get the filename of the zip. It has a strange cryptic ending concatenated, no glue why
-  zipF <- paste("data/needs/", list.files("data/needs")[1], sep = "")
+  zipF <- paste(list.files("data/needs")[1], sep = "")
 
   # unzip the temp file
-  unzip(zipF, exdir = "data/needs/")
+  unzip(zipF)
 
   # delete the temporary file. Not needed anymore after csv is unzipped
   file.remove(zipF)
 
   # get the csv file name of the unzipped temp file. This step is important because sometimes the filname changes.
   # So no faster process is possible
-  csvf <- paste("data/needs/", list.files("data/needs")[1], sep = "")
+  csvf <- paste(list.files("data/needs")[1], sep = "")
 
   # Read in the unzipped csv file
   if(getOption("logging")) print(paste("[INFO]: scrape_rl_need_month - Read in csv file for ", date_code))
@@ -571,7 +571,7 @@ getOperatingReserveAuctions <- function(date_from, date_to, productId) {
 
   # Get the first (initial) auction data and add it to the df_auctions data.frame
   response_content <- callGETforAuctionResults(auctionIds[1])
-  filename <- paste("data/auctions/temp_auctions_", auctionIds[1], sep = "")
+  filename <- paste("temp_auctions_", auctionIds[1], sep = "")
   df_auctions <- build_df_rl_calls_auctions(response_content, "auctions", filename)
 
   # If only one auctionId (= just auction data of one day) is called, then stop and return the initial auction data
@@ -585,7 +585,7 @@ getOperatingReserveAuctions <- function(date_from, date_to, productId) {
 
         response_content <- callGETforAuctionResults(auctionIds[j])
         # TODO improve this function --> causes arbitrary errors while writing and reading in the temp csv file
-        filename <- paste("data/auctions/temp_auctions_", auctionIds[j], sep = "")
+        filename <- paste("temp_auctions_", auctionIds[j], sep = "")
         df <- build_df_rl_calls_auctions(response_content, "auctions", filename)
 
         df_auctions <- rbind(df_auctions, df)
@@ -656,7 +656,7 @@ getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
 
     # Build up the data.frame
     # TODO improve this function --> causes arbitrary errors while writing and reading in the temp csv file
-    filename <- paste("data/calls/temp_calls_", e, sep = "")
+    filename <- paste("temp_calls_", e, sep = "")
     d <- build_df_rl_calls_auctions(p, "calls", filename)
 
     df <- rbind(df, d)
