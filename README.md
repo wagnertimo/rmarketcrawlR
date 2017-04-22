@@ -36,6 +36,16 @@ Before using this R package, please check that you have installed the following 
 
 ### Usage
 
+#### Get operating reserve power data
+
+There are three main functions which allows you to crawl operating reserve calls, needs and auction results of the german operating reserve market. The operating reserve power data (specified by the parameter `rl`) is provided by the transperant website (https://www.regelleistung.net) of the four energy system providers (specified by the parameter `uenb`):
+
+* `getReserveCalls(startDate, endDate, uenb, rl)`: It retrieves the 15min operating reserve calls for several products and providers (source: https://www.regelleistung.net/ext/data/). The data gets formatted. Checkout documentation for further information.
+
+* `getReserveAuctions(startDate, endDate, rl)`: It retrieves the operating reserve auction results (anonymous order list of energy providers; MOL) for a specific product and time period (source: https://www.regelleistung.net/ext/tender/). The data gets formatted. Checkout documentation for further information.
+
+* `getReserveNeeds(startDate, endDate)`: It retrieves the operating reserve needs for a specific time frame of the Netzregelverbund (NRV) based on a 4 sec resolution (source: https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/regelenergie-bedarf-und-abruf). The data gets formatted. Checkout documentation for further information.
+
 Below you will find an example code snippet to get started. It is shown how to crawl the operating reserve power data. It should be mentioned that you have to take care of the time period for the auctions data. The data is weekly based from monday till sunday. So when you want to do operations with it in combination with needs and/or calls, the time periods have to overlap. It is also important that you set the logging state in the begining. For now there is no default value. Forgetting to set the log status will break all functions.
 
 ```r
@@ -53,15 +63,21 @@ auctions = getReserveAuctions('28.12.2015', '10.01.2017', '2')
 
 ```
 
-### Get operating reserve power data
+#### Get the approximated 1min Call data and the 1min marginal work prices
 
-There are three main functions which allows you to crawl operating reserve calls, needs and auction results of the german operating reserve market. The operating reserve power data (specified by the parameter `rl`) is provided by the transperant website (https://www.regelleistung.net) of the four energy system providers (specified by the parameter `uenb`):
+The code snippet below provides you an example to calculate either the 1min approximated calls or the marginal work prices based on the 1min calls.
 
-* `getReserveCalls(startDate, endDate, uenb, rl)`: It retrieves the 15min operating reserve calls for several products and providers (source: https://www.regelleistung.net/ext/data/). The data gets formatted. Checkout documentation for further information.
+```r
+# Use the crawled data from above
 
-* `getReserveAuctions(startDate, endDate, rl)`: It retrieves the operating reserve auction results (anonymous order list of energy providers; MOL) for a specific product and time period (source: https://www.regelleistung.net/ext/tender/). The data gets formatted. Checkout documentation for further information.
+# Calculate the approximated 1min calls from the 4sec operating reserve needs data
+approx.calls = getOneMinuteCalls(needs, calls)
 
-* `getReserveNeeds(startDate, endDate)`: It retrieves the operating reserve needs for a specific time frame of the Netzregelverbund (NRV) based on a 4 sec resolution (source: https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/regelenergie-bedarf-und-abruf). The data gets formatted. Checkout documentation for further information.
+# Calculate directly the marginal work price by internally approximate 1min calls
+marginal.prices = getMarginalWorkPrices(needs, calls, auctions)
+
+```
+
 
 
 
