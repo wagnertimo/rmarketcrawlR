@@ -34,6 +34,23 @@ Before using this R package, please check that you have installed the following 
 - `doParallel`
 - `foreach`
 
+### Usage
+
+Below you will find an example code snippet to get started. It is shown how to crawl the operating reserve power data. It should be mentioned that you have to take care of the time period for the auctions data. The data is weekly based from monday till sunday. So when you want to do operations with it in combination with needs and/or calls, the time periods have to overlap. It is also important that you set the logging state in the begining. For now there is no default value. Forgetting to set the log status will break all functions.
+
+```r
+
+# You have to set logging to TRUE or FALSE if you want logs printed out (Good for Debugging)
+# No default yet. Will break if not set.
+setLogging(TRUE)
+
+# Get sample data for operating needs, calls and auctions of secondary reserve power from the Netzregelverbund
+needs = getReserveNeeds('01.01.2016', '10.01.2016')
+calls = getReserveCalls('01.01.2016', '10.01.2016', '6', 'SRL')
+auctions = getReserveAuctions('28.12.2015', '10.01.2017', '2')
+
+```
+
 ### Get operating reserve power data
 
 There are three main functions which allows you to crawl operating reserve calls, needs and auction results of the german operating reserve market. The operating reserve power data (specified by the parameter `rl`) is provided by the transperant website (https://www.regelleistung.net) of the four energy system providers (specified by the parameter `uenb`):

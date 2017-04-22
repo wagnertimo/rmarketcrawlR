@@ -2,6 +2,7 @@ Package: rmarketcrawlR
 Type: Package
 Title: Crawling operating reserve data (15min calls, auction prices, 4sec needs)
 Version: 0.1.0
+Depends: R (>= 3.3.0)
 Imports:
     httr,
     xml2,

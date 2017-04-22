@@ -27,6 +27,7 @@ getTheMeanPowerPrice(df, 'NEG_NT', '20.03.2017')
 auctions.2016 <- getReserveAuctions('28.12.2015', '01.01.2017', '2')
 calls.2016 <- getReserveCalls('01.01.2016', '31.12.2016', '6', 'SRL')
 needs.2016 <- getReserveNeeds('01.01.2016', '31.12.2016')
+needs.2 <- getReserveNeeds('01.01.2016', '03.01.2016')
 
 # sample the 2016 data
 start <- 1  # start observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
