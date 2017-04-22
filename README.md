@@ -65,6 +65,8 @@ auctions = getReserveAuctions('28.12.2015', '10.01.2017', '2')
 
 #### Get the approximated 1min Call data and the 1min marginal work prices
 
+The approximation of the operating reserve calls in a higher resolution (1 min instead of 15min) considers some special cases which can occur. The case of **homogenity** where all averaged 1min reserve needs are homogenly positive (or negative) within a 15min section. This leads to a 15min average need for negative (positive) power of 0. But in the case that the 15min calls of negative (positive) power is not 0, the 1min needs have to be changed. Its smallest absolute value gets the negative (positive) value to fulfill the 15min average call in 1min. Hereby, cases can occur where the newly modified data points cross the zero level; the change their sign. Hence the overall 15min average is not equal to the expected 15min call average. Therefore a recursive modification changes iteratively the data points till the averages are equal.
+
 The code snippet below provides you an example to calculate either the 1min approximated calls or the marginal work prices based on the 1min calls.
 
 ```r
@@ -78,34 +80,6 @@ marginal.prices = getMarginalWorkPrices(needs, calls, auctions)
 
 ```
 
-
-
-
-## Functionality
-
-### Scraping reserve data
-
-The `scrapeData.R` script contains 3 main functions to provide the operating reserve power data (`rl`) from the transperant website of the four energy system providers (`uenb_type`). For more information about the method check out the documentation.
-
-* `getOperatingReserveCalls(date_from, date_to, uenb_type, rl_type)`: It retrieves the 15min operating reserve calls for several products and providers. (source: https://www.regelleistung.net/ext/data/)
-
-* `getOperatingReserveAuctions(date_from, date_to, rl_type)`: It retrieves the operating reserve auction results (anonymous order list of energy providers) for a specific product and time period. (source: https://www.regelleistung.net/ext/tender/)
-
-* `getOperatingReserveNeeds(startDate, endDate)`: It retrieves the operating reserve needs for a specific time frame of the Netzregelverbund (NRV) based on a 4 sec resolution. (source: https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/regelenergie-bedarf-und-abruf)
-
-### Preprocess the scraped data
-
-There is a `preprocessData.R` script which nicely formats and prepares the scraped data.frames for further use. The main functions:
-
-* `preProcessOperatingReserveCalls(scraped.calls)`
-
-* `preProcessOperatingReserveCalls(scraped.needs)`
-
-* `addTarif(df)`: it adds a *Tarif* variable to an input data.frame with values of *HT* (Hochtarif) or *NT* (Nebentarif). It is based on the hour and date as well as the official federal-state wide german holidays. Read documentation.
-
-* `approximateCalls(preprocessed.needs, preprocessed.calls)`: approximates the operating reserve calls in a higher resolution (1 min instead of 15min). It considers some special cases which can occur. The case of **homogenity** where all 1min needs are homogenly positive (or negative) within a 15min section. This leads to a 15min average need for negative (positive) power of 0. But in the case that the 15min calls of negative (positive) power is not 0, the 1min needs have to be changed. Its smallest absolute value gets the negative (positive) value to fulfill the 15min average call in 1min.
-
-
 ## Miscellaneous
 
 Data of operating reserve calls are available since 2011-06-27 at https://www.regelleistung.net/ext/data/.
@@ -113,4 +87,4 @@ Data of operating reserve calls are available since 2011-06-27 at https://www.re
 Data of operating reserve needs (4sec data) are available since July 2010 at https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/.
 
 
-Version v01 - 05.04.2017
+Version v02 - 21.04.2017
