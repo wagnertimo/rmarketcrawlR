@@ -186,8 +186,8 @@ getOneMinuteCalls <- function(needs, calls) {
 #' @description This production function directly calculates the marginal work prices for every minute (based on the approximated 1min calls).
 #' If you already should have calculated the 1min approximated calls then use the @seealso calcMarginalWorkPrices in the @seealso preprocessData.R file.
 #'
-#' @param needs - The preprocessed and approximated calls (@seealso getReserveNeeds)
-#' @param calls - The preprocessed operating reserve auctions (@seealso getReserveCalls)
+#' @param needs - The preprocessed operating reserve needs (@seealso getReserveNeeds)
+#' @param calls - The preprocessed operating reserve calss (@seealso getReserveCalls)
 #' @param auctions - The preprocessed operating reserve auctions (@seealso getReserveAuctions)
 #'
 #' @return A complete data.frame with the 1min approximated calls and the corresponding marginal work prices for every minute
@@ -196,10 +196,10 @@ getOneMinuteCalls <- function(needs, calls) {
 #'
 #' needs <- getReserveNeeds('07.03.2017', '14.03.2017')
 #' calls <- getReserveCalls('07.03.2017', '14.03.2017', '6', 'SRL')
+#' # The time period of the auctions must lie within the period of the calls and needs. An auction week goes from monday till sunday.
+#' auctions <- getReserveAuctions('06.03.2017', '19.03.2017', '2')
 #'
-#' OneMinuteCalls <- get1minCalls(needs, calls)
-#'
-#' df <- getMarginalWorkPrices(df.approx.calls, s.a)
+#' df <- getMarginalWorkPrices(needs, calls, auctions)
 #'
 #'
 #' @export

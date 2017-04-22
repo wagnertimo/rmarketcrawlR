@@ -30,7 +30,7 @@ needs.2016 <- getReserveNeeds('01.01.2016', '31.12.2016')
 
 # sample the 2016 data
 start <- 1  # start observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
-end <- 2   # end observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
+end <- 4   # end observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
 
 needs <- needs.2016[(((start - 1)*225) + 1):(end*225),]
 calls <- calls.2016[start:end,]
@@ -40,7 +40,7 @@ auctions <- auctions.2016
 
 approx.calls <- getOneMinuteCalls(needs,calls)
 
-setLogging(TRUE)
+setLogging(FALSE)
 mwork <- getMarginalWorkPrices(needs,calls,auctions)
 
 

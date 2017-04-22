@@ -627,6 +627,7 @@ countPositiveCrossingZerosForDF <- function(df) {
 preProcessOperatingReserveCalls <- function(df.calls) {
 
   library(data.table)
+  library(lubridate)
 
   if(getOption("logging")) print(paste("[INFO]: Called preProcessOperatingReserveCalls"))
 
@@ -1049,6 +1050,35 @@ calcMarginalWorkPrices <- function(df, auctions) {
 
   if(getOption("logging")) print(paste("[INFO]: calcMarginalWorkPrices - Starting to match every minute with auctions and calculate marginal price"))
 
+
+
+  # library(foreach)
+  # library(doParallel)
+  #
+  # # setup parallel backend to use many processors
+  # cores = detectCores()
+  # cl <- makeCluster(cores[1]-2) #not to overload your computer
+  # registerDoParallel(cl)
+  #
+  # arraym <- foreach(i = 1:nrow(df), .combine = rbind, .packages = c("dplyr","magrittr"), .verbose=TRUE) %dopar% {
+  #
+  #   tempMatrix <- matchAuctionsWithCalls(auctions, df[i, ])
+  #
+  #   # Store the work price of the auction in an array
+  #   #arraym <- rbind(arraym, ss$m)
+  #   # update progress bar
+  #   if(getOption("logging")) setTxtProgressBar(pb, i)
+  #
+  #
+  #   tempMatrix #Equivalent to finalMatrix = cbind(finalMatrix, tempMatrix)
+  #
+  # }
+  # #stop cluster
+  # stopCluster(cl)
+
+
+
+
   # for ever approx. 1min call match auction bids and compute the marginal work price
   for(i in 1:nrow(df)) {
 
@@ -1085,4 +1115,23 @@ calcMarginalWorkPrices <- function(df, auctions) {
   return(df)
 
 }
+
+
+# matchAuctionsWithCalls <- function(auctions, callObj){
+#   library(dplyr)
+#   library(magrittr)
+#
+#   ss <- auctions %>%
+#     filter(date_from <= callObj$DateTime & callObj$DateTime <= date_to & callObj$Tarif == Tarif & callObj$Direction == Direction) %>%
+#     arrange(work_price) %>%
+#     mutate(cumsum = cumsum(offered_power_MW)) %>%
+#     filter(cumsum <= abs(callObj$avg_1min_MW)) %>%
+#     summarise(m = max(work_price))
+#   ss$m
+# }
+
+
+
+
+
 
