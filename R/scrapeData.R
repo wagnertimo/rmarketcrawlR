@@ -353,8 +353,7 @@ scrape_rl_need_month <- function(date_code) {
   # Create a temporary file to store the downloaded zip file in it
   tempFileName <- paste("needs_", date_code, sep = "")
 
-  print(tempFileName)
-  temp <- tempfile(tempFileName, "./")
+    temp <- tempfile(tempFileName, "./")
   url = paste('https://www.transnetbw.de/files/bis/srlbedarf/', date_code, '_SRL_Bedarf.zip', sep = "");
 
   if(getOption("logging")) print(paste("[INFO]: scrape_rl_need_month - Download data for ", date_code))
@@ -373,7 +372,6 @@ scrape_rl_need_month <- function(date_code) {
 
   # Get the filename of the zip. It has a strange cryptic ending concatenated, no glue why. But it starts with the "needs_" prefix
   zipF <- list.files("./")[startsWith(list.files("./"), "needs_")]
-  print(zipF)
   # unzip the temp file
   unzip(zipF)
 

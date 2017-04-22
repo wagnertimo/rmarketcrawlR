@@ -39,6 +39,8 @@ Before using this R package, please check that you have installed the following 
 Below you will find an example code snippet to get started. It is shown how to crawl the operating reserve power data. It should be mentioned that you have to take care of the time period for the auctions data. The data is weekly based from monday till sunday. So when you want to do operations with it in combination with needs and/or calls, the time periods have to overlap. It is also important that you set the logging state in the begining. For now there is no default value. Forgetting to set the log status will break all functions.
 
 ```r
+# Activate the package in the workspace
+library(rmarketcrawlR)
 
 # You have to set logging to TRUE or FALSE if you want logs printed out (Good for Debugging)
 # No default yet. Will break if not set.
