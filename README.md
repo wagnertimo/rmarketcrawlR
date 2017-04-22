@@ -59,7 +59,7 @@ setLogging(TRUE)
 # Get sample data for operating needs, calls and auctions of secondary reserve power from the Netzregelverbund
 needs = getReserveNeeds('01.01.2016', '10.01.2016')
 calls = getReserveCalls('01.01.2016', '10.01.2016', '6', 'SRL')
-auctions = getReserveAuctions('28.12.2015', '10.01.2017', '2')
+auctions = getReserveAuctions('28.12.2015', '10.01.2016', '2')
 
 ```
 
