@@ -10,7 +10,7 @@ It is build as part of my master thesis to analyze the calling probability of op
 
 ### Installing
 
-You can easily install this R package by using the `install_github()` function from the `devtools` package:
+When installing this package you should at least use the *R version 3.3.0 (2016-05-03)*. For the library dependecies see the section above. You can easily install this R package by using the `install_github()` function from the `devtools` package:
 
 ```r
 library(devtools)
@@ -18,7 +18,7 @@ install_github("wagnertimo/rmarketcrawlR")
 ```
 ### Library dependencies
 
-Before using this R package, please check that you have installed the following R packages. During installation the dependencies should have been installed:
+Before using this R package, please check that you have installed the following R packages. Normally during the installation of the package those dependencies will also be installed. If not you have to do it manually.
 
 - `httr`
 - `xml2`
