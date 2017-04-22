@@ -352,7 +352,9 @@ scrape_rl_need_month <- function(date_code) {
 
   # Create a temporary file to store the downloaded zip file in it
   tempFileName <- paste("needs_", date_code, sep = "")
-  temp <- tempfile(tempFileName)
+
+  print(tempFileName)
+  temp <- tempfile(tempFileName, "./")
   url = paste('https://www.transnetbw.de/files/bis/srlbedarf/', date_code, '_SRL_Bedarf.zip', sep = "");
 
   if(getOption("logging")) print(paste("[INFO]: scrape_rl_need_month - Download data for ", date_code))
@@ -369,9 +371,9 @@ scrape_rl_need_month <- function(date_code) {
   #           ---> unzip file by getting the the first file. Then get the name of the csv and read it in. Delete all files after use.
   #
 
-  # Get the filename of the zip. It has a strange cryptic ending concatenated, no glue why
-  zipF <- paste(list.files("data/needs")[1], sep = "")
-
+  # Get the filename of the zip. It has a strange cryptic ending concatenated, no glue why. But it starts with the "needs_" prefix
+  zipF <- list.files("./")[startsWith(list.files("./"), "needs_")]
+  print(zipF)
   # unzip the temp file
   unzip(zipF)
 
@@ -380,7 +382,7 @@ scrape_rl_need_month <- function(date_code) {
 
   # get the csv file name of the unzipped temp file. This step is important because sometimes the filname changes.
   # So no faster process is possible
-  csvf <- paste(list.files("data/needs")[1], sep = "")
+  csvf <- list.files("./")[endsWith(list.files("./"), ".csv")]
 
   # Read in the unzipped csv file
   if(getOption("logging")) print(paste("[INFO]: scrape_rl_need_month - Read in csv file for ", date_code))
