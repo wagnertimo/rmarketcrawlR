@@ -31,7 +31,7 @@ needs.2 <- getReserveNeeds('01.01.2016', '03.03.2016')
 
 # sample the 2016 data
 start <- 1  # start observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
-end <- 4   # end observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
+end <- 960   # end observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
 
 needs <- needs.2016[(((start - 1)*225) + 1):(end*225),]
 calls <- calls.2016[start:end,]
@@ -41,21 +41,31 @@ auctions <- auctions.2016
 
 approx.calls <- getOneMinuteCalls(needs,calls)
 
+setLogging(FALSE)
 setLogging(TRUE)
-mwork <- getMarginalWorkPrices(needs,calls,auctions)
 
 
 # Start 18:05 -> stuck at Cut time -> 18:09 -> calc avg, cut 15min, split 15min sections ... went for run
-mwork <- getMarginalWorkPrices(needs.2016,calls.2016,auctions.2016)
+#mwork <- getMarginalWorkPrices(needs.2016,calls.2016,auctions.2016)
 
+# 10 days (sample of 01.01.2016 - 10.01.2016) parallel for margin calc. with 2 cores --> exe time:  135sec = 2,25min --> ca. 90min
+mwork.parallel <- getMarginalWorkPrices(needs,calls,auctions,2)
 
-# Seems that 60 observations takes 60 secs. So every observation takes 1sec. For a year --> 146h ?!?!
-system.time(getMarginalWorkPrices(needs,calls,auctions))
+mwork <- getMarginalWorkPrices(needs,calls,auctions)
 
+# on old laptop 10 days (sample of 01.01.2016 - 10.01.2016) took 13 minutes --> 365/10*13/60 = 8h
+# Looks more like one obs one sec --> 365*24*60/60/60 = 146h = 6d
+system.time(getMarginalWorkPrices(needs,calls,auctions,2))
 
-# Try parallel computing
+# start.time <- Sys.time()
+# mwork <- getMarginalWorkPrices(needs,calls,auctions)
+# end.time <- Sys.time()
+# time.taken <- end.time - start.time
+# time.taken
 
-
+#
+# !!! CAUTION THere are -Inf marginal work prices e.g. at 2016-01-01 02:21:00
+#
 
 
 

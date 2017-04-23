@@ -189,6 +189,7 @@ getOneMinuteCalls <- function(needs, calls) {
 #' @param needs - The preprocessed operating reserve needs (@seealso getReserveNeeds)
 #' @param calls - The preprocessed operating reserve calss (@seealso getReserveCalls)
 #' @param auctions - The preprocessed operating reserve auctions (@seealso getReserveAuctions)
+#' @param numCores - This is an optional parameter. If set then the parallelWrapper is used. Specify the number of processor cores. Do not exceed your number of Cores.
 #'
 #' @return A complete data.frame with the 1min approximated calls and the corresponding marginal work prices for every minute
 #'
@@ -204,9 +205,16 @@ getOneMinuteCalls <- function(needs, calls) {
 #'
 #' @export
 #'
-getMarginalWorkPrices <- function(needs, calls, auctions) {
+getMarginalWorkPrices <- function(needs, calls, auctions, numCores) {
 
-  df <- calcMarginalWorkPrices(approximateCallsInRecursion(needs, calls), auctions)
+
+  # If the parameter numCores is set then the user wants to use parallel computing
+  if(missing(numCores)) {
+    df <- calcMarginalWorkPrices(approximateCallsInRecursion(needs, calls), auctions)
+  } else {
+    df <- parallelCompWrapperForMarginalWorkPrices(approximateCallsInRecursion(needs, calls), auctions, numCores)
+  }
+
 
   drops <- c("cuttedTime", "NEG", "POS", "product_name", "Homo_NEG", "Homo_POS", "avg_15min_MW_NEG", "avg_15min_MW_POS")
 

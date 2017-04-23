@@ -1050,35 +1050,6 @@ calcMarginalWorkPrices <- function(df, auctions) {
 
   if(getOption("logging")) print(paste("[INFO]: calcMarginalWorkPrices - Starting to match every minute with auctions and calculate marginal price"))
 
-
-
-  # library(foreach)
-  # library(doParallel)
-  #
-  # # setup parallel backend to use many processors
-  # cores = detectCores()
-  # cl <- makeCluster(cores[1]-2) #not to overload your computer
-  # registerDoParallel(cl)
-  #
-  # arraym <- foreach(i = 1:nrow(df), .combine = rbind, .packages = c("dplyr","magrittr"), .verbose=TRUE) %dopar% {
-  #
-  #   tempMatrix <- matchAuctionsWithCalls(auctions, df[i, ])
-  #
-  #   # Store the work price of the auction in an array
-  #   #arraym <- rbind(arraym, ss$m)
-  #   # update progress bar
-  #   if(getOption("logging")) setTxtProgressBar(pb, i)
-  #
-  #
-  #   tempMatrix #Equivalent to finalMatrix = cbind(finalMatrix, tempMatrix)
-  #
-  # }
-  # #stop cluster
-  # stopCluster(cl)
-
-
-
-
   # for ever approx. 1min call match auction bids and compute the marginal work price
   for(i in 1:nrow(df)) {
 
@@ -1106,7 +1077,7 @@ calcMarginalWorkPrices <- function(df, auctions) {
   if(getOption("logging")) close(pb)
 
   # Give it the right name and bind it as a new column to the input data.frame
-  colnames(arraym) <- c("marginalWorkPrice")
+  colnames(arraym) <- c("marginal_work_price")
   df <- cbind(df,arraym)
 
   if(getOption("logging")) print(paste("[INFO]: calcMarginalWorkPrices - DONE"))
@@ -1117,18 +1088,91 @@ calcMarginalWorkPrices <- function(df, auctions) {
 }
 
 
-# matchAuctionsWithCalls <- function(auctions, callObj){
-#   library(dplyr)
-#   library(magrittr)
-#
-#   ss <- auctions %>%
-#     filter(date_from <= callObj$DateTime & callObj$DateTime <= date_to & callObj$Tarif == Tarif & callObj$Direction == Direction) %>%
-#     arrange(work_price) %>%
-#     mutate(cumsum = cumsum(offered_power_MW)) %>%
-#     filter(cumsum <= abs(callObj$avg_1min_MW)) %>%
-#     summarise(m = max(work_price))
-#   ss$m
-# }
+parallelCompWrapperForMarginalWorkPrices <- function(approximated.calls, auctions, numCores) {
+
+  # Add the Tarif to the calls
+  approximated.calls <- addTarif(approximated.calls)
+  # Add Direction NEG or POS to the calls
+  approximated.calls <- addDirection(approximated.calls)
+
+  # Format the input data.frames --> parallel package only supports numerical variables
+  # POSIXct (DateTime), Date (date_from, date_to) and characters (Tarif and Direction) must be converted
+  c <- formatApproxCallsForParallelComp(approximated.calls)
+  a <- formatAuctionsForParallelComp(auctions)
+
+  library(foreach)
+  library(doParallel)
+
+  # setup parallel backend to use many processors
+  #cores = detectCores()
+  #cl <- makeCluster(cores[1]-2) #not to overload your computer
+  cl <- makeCluster(numCores) #not to overload your computer
+  registerDoParallel(cl)
+
+  mwp <- foreach(i = 1:nrow(c), .combine = rbind, .export = c("matchAuctionsWithCalls"), .packages = c("dplyr","magrittr"), .verbose=FALSE) %dopar% {
+
+    temp <- matchAuctionsWithCalls(a, c[i,])
+    temp
+  }
+
+  #stop cluster
+  stopCluster(cl)
+  colnames(mwp) <- "marginal_work_price"
+
+  df <- cbind(approximated.calls, mwp)
+
+  return(df)
+}
+
+
+# Outsourcing the match function. It is used for the parallelWrapper function to calculate the marginal work price
+matchAuctionsWithCalls <- function(auction.results, callObj){
+  library(dplyr)
+  library(magrittr)
+
+  ss <- auction.results %>%
+    filter(date_from <= callObj$DateTime & callObj$DateTime <= date_to & callObj$Tarif == Tarif & callObj$Direction == Direction) %>%
+    arrange(work_price) %>%
+    mutate(cumsum = cumsum(offered_power_MW)) %>%
+    filter(cumsum <= abs(callObj$avg_1min_MW)) %>%
+    summarise(m = max(work_price))
+  ss$m
+}
+
+# returns the minimal input data.frame which the getMarginalWorkPrice function needs
+# converts everything to numeric! important for parallel computation
+# DateTime origin:1970-01-01
+# Tarif: HT = 1, NT = -1
+# Direction: NEG = -1, POS = 1
+formatApproxCallsForParallelComp <- function(df) {
+
+  # Add the Tarif to the calls
+  df <- addTarif(df)
+  # Add Direction NEG or POS to the calls
+  df <- addDirection(df)
+  df <- df[, (names(df) %in% c("DateTime", "avg_1min_MW", "Tarif", "Direction"))]
+  df$DateTime <- as.numeric(df$DateTime)
+  df$Tarif <- ifelse(df$Tarif == "HT", 1, -1)
+  df$Direction <- ifelse(df$Direction == "NEG", -1, 1)
+
+  return(df)
+
+}
+
+# Convert date_from and date_to variable in the auctions data.frame into a POISXct datetime object with hour minute and seconds and then to mumeric value
+formatAuctionsForParallelComp <- function(auctions) {
+  # always 00:00:00
+  auctions$date_from <- as.numeric(as.POSIXct(paste(auctions$date_from, "00:00:00", sep=" "), "%Y-%m-%d %H:%M:%S", tz = "Europe/Berlin"))
+  # always 23:59:00
+  auctions$date_to <- as.numeric(as.POSIXct(paste(auctions$date_to, "23:59:00", sep=" "), "%Y-%m-%d %H:%M:%S", tz = "Europe/Berlin"))
+  auctions$Tarif <- ifelse(auctions$Tarif == "HT", 1, -1)
+  auctions$Direction <- ifelse(auctions$Direction == "NEG", -1, 1)
+
+  return(auctions)
+
+}
+
+
 
 
 

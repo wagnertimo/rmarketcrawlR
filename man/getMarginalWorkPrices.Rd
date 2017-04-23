@@ -4,7 +4,7 @@
 \alias{getMarginalWorkPrices}
 \title{getMarginalWorkPrice}
 \usage{
-getMarginalWorkPrices(needs, calls, auctions)
+getMarginalWorkPrices(needs, calls, auctions, numCores)
 }
 \arguments{
 \item{needs}{- The preprocessed operating reserve needs (@seealso getReserveNeeds)}
@@ -12,6 +12,8 @@ getMarginalWorkPrices(needs, calls, auctions)
 \item{calls}{- The preprocessed operating reserve calss (@seealso getReserveCalls)}
 
 \item{auctions}{- The preprocessed operating reserve auctions (@seealso getReserveAuctions)}
+
+\item{numCores}{- This is an optional parameter. If set then the parallelWrapper is used. Specify the number of processor cores. Do not exceed your number of Cores.}
 }
 \value{
 A complete data.frame with the 1min approximated calls and the corresponding marginal work prices for every minute

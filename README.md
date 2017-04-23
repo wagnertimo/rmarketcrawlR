@@ -67,6 +67,8 @@ auctions = getReserveAuctions('28.12.2015', '10.01.2016', '2')
 
 The approximation of the operating reserve calls in a higher resolution (1 min instead of 15min) considers some special cases which can occur. The case of **homogenity** where all averaged 1min reserve needs are homogenly positive (or negative) within a 15min section. This leads to a 15min average need for negative (positive) power of 0. But in the case that the 15min calls of negative (positive) power is not 0, the 1min needs have to be changed. Its smallest absolute value gets the negative (positive) value to fulfill the 15min average call in 1min. Hereby, cases can occur where the newly modified data points cross the zero level; the change their sign (case of **CrossingZero**). Hence the overall 15min average is not equal to the expected 15min call average. Therefore a recursive modification changes iteratively the data points till the averages are equal.
 
+Since calculating the marginal work prices is highly computational, it is recommended to use the parallel computing wrapper by specifying the optional parameter `numCores` in the `getMarginalWorkPrices()` function.
+
 The code snippet below provides you an example to calculate either the 1min approximated calls or the marginal work prices based on the 1min calls.
 
 ```r
@@ -77,6 +79,10 @@ approx.calls = getOneMinuteCalls(needs, calls)
 
 # Calculate directly the marginal work price by internally approximate 1min calls
 marginal.prices = getMarginalWorkPrices(needs, calls, auctions)
+
+# There is also a wrapper for parallel computing. This makes sense to use if the time period lies over several days
+# Therefore set the optional parameter numCores to the amount of processors you want to use. 
+marginal.prices.parallel = getMarginalWorkPrices(needs, calls, auctions, numCores = 2)
 
 ```
 
