@@ -93,13 +93,8 @@ Now that you have the data set with the 1min approximated calls and their respec
 ```r
 # Use the crawled data from above. Logging is set to true.
 
-<<<<<<< HEAD
 # Get the call probabilities for the whole data set of the product "NT_POS" and within the price range of 0 to 775 (this is the max marginal work price for that period). Use only one process core for the parallel computation.
 call.probs <- getCallProbDataSet(mwork.parallel, 1, 0, 775, "NT", "POS")
-=======
-# Get the call probabilities for one day (2016-01-01) of the product "NT_POS" and within the price range of 0 to 775 (this is the max marginal work price for that period). Use only one process core for the parallel computation.
-call.probs = getCallProbDataSet(marginal.prices.parallel, 1, 0, 775, "2016-01-01 00:00:00", "2016-01-01 23:59:59", "NT", "POS")
->>>>>>> b59e8e84c7bb621daa22e9b56cd0a897d33463b5
 
 # Plot the call probabilities. Therefore create an array with the price range for the x axis. On the y axis set the computed call.probs
 library(ggplot2)
