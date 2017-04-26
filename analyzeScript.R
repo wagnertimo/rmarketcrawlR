@@ -31,7 +31,7 @@ needs.2016 <- getReserveNeeds('01.01.2016', '31.12.2016')
 
 # sample the 2016 data
 start <- 1  # start observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
-end <- 192   # end observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
+end <- 960   # end observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
 
 needs <- needs.2016[(((start - 1)*225) + 1):(end*225),]
 calls <- calls.2016[start:end,]
@@ -327,7 +327,7 @@ max.mwork <- max(mwork.parallel$marginal_work_price) # e.g. 774.6, 5999.97
 # Beginning at a value below the min will lead to 100% call probability !! Be aware of different tarifs
 
 # get the probability vector of the min max sequence
-tr <- getCallProbDataSet(mwork.parallel, 1, 0, 775, "2016-01-01 00:00:00", "2016-01-01 08:00:00", "NT", "POS")
+tr <- getCallProbDataSet(mwork.parallel, 1, 0, 775, "2016-01-01 00:00:00", "2016-01-01 23:59:59", "NT", "POS")
 
 # save the min max sequence in a vector to plot it against the corresponding probabilities
 tr2 <- seq(0, 775)

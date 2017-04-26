@@ -1162,12 +1162,12 @@ formatAuctionsForParallelComp <- function(auctions) {
 #' @return an array with all the call probabilities of the specified timeperiod and price range.
 #'
 #' @examples
-#' needs <- getOperatingReserveNeeds('01.01.2016', '02.01.2016')
-#' calls <- getOperatingReserveCalls('01.01.2016', '02.01.2016', '6', 'SRL')
-#' auctions <- getOperatingReserveAuctions('28.12.2016', '02.01.2016', '2')
+#' needs <- getOperatingReserveNeeds('01.01.2016', '10.01.2016')
+#' calls <- getOperatingReserveCalls('01.01.2016', '10.01.2016', '6', 'SRL')
+#' auctions <- getOperatingReserveAuctions('28.12.2015', '10.01.2016', '2')
 #'
 #' mwork.parallel <- getMarginalWorkPrices(needs,calls,auctions,2)
-#' call.probs <- getCallProbDataSet(mwork.parallel, 1, 0, max.mwork, "2016-01-01 00:00:00", "2016-01-01 08:00:00", "NT", "POS")
+#' call.probs <- getCallProbDataSet(mwork.parallel, 1, 0, 775, "2016-01-01 00:00:00", "2016-01-01 23:59:59", "NT", "POS")
 #'
 #' # Plot the call probabilities. Therefore create an array with the price range
 #' library(ggplot2)
