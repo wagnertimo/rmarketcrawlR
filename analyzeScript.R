@@ -27,11 +27,11 @@ getTheMeanPowerPrice(df, 'NEG_NT', '20.03.2017')
 auctions.2016 <- getReserveAuctions('28.12.2015', '01.01.2017', '2')
 calls.2016 <- getReserveCalls('01.01.2016', '31.12.2016', '6', 'SRL')
 needs.2016 <- getReserveNeeds('01.01.2016', '31.12.2016')
-needs.2 <- getReserveNeeds('01.01.2016', '03.03.2016')
+
 
 # sample the 2016 data
 start <- 1  # start observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
-end <- 960   # end observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
+end <- 192   # end observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
 
 needs <- needs.2016[(((start - 1)*225) + 1):(end*225),]
 calls <- calls.2016[start:end,]
@@ -55,7 +55,11 @@ mwork <- getMarginalWorkPrices(needs,calls,auctions)
 
 # on old laptop 10 days (sample of 01.01.2016 - 10.01.2016) took 13 minutes --> 365/10*13/60 = 8h
 # Looks more like one obs one sec --> 365*24*60/60/60 = 146h = 6d
+
 system.time(getMarginalWorkPrices(needs,calls,auctions,2))
+
+
+
 
 # start.time <- Sys.time()
 # mwork <- getMarginalWorkPrices(needs,calls,auctions)
@@ -66,6 +70,8 @@ system.time(getMarginalWorkPrices(needs,calls,auctions,2))
 #
 # !!! CAUTION THere are -Inf marginal work prices e.g. at 2016-01-01 02:21:00
 #
+
+
 
 
 
@@ -291,12 +297,14 @@ plotCorrectedNeeds(r)
 #'                      --> and last cumulated bid is of power 1200
 #'                      --> will the next bid/order get filled with the rest portion of 0,783 or do we ceil the avg_1min_MW????
 
+# --------------------
+# DONE
+# --------------------
 
-# Test matching for first 15min sample
+#
+# !!! CAUTION THere are -Inf marginal work prices e.g. at 2016-01-01 02:21:00
+#
 
-sample.app.calls <- t[1:60,]
-
-mwork <- getMarginalWorkPrices(sample.app.calls, s.a)
 
 
 
@@ -313,43 +321,20 @@ mwork <- getMarginalWorkPrices(sample.app.calls, s.a)
 
 
 # Get min and max values of the marginal work prices. This sets the boundaries for the probabilities
-min.mwork <- min(mwork$marginalWorkPrice) # e.g. 32
-max.mwork <- max(mwork$marginalWorkPrice) # e.g. 774.6
-
+min.mwork <- min(mwork.parallel$marginal_work_price) # e.g. 32
+max.mwork <- max(mwork.parallel$marginal_work_price) # e.g. 774.6, 5999.97
 
 # Beginning at a value below the min will lead to 100% call probability !! Be aware of different tarifs
 
 # get the probability vector of the min max sequence
-tr <- getCallProbDataSet(mwork, min.mwork, max.mwork)
+tr <- getCallProbDataSet(mwork.parallel, 1, 0, 775, "2016-01-01 00:00:00", "2016-01-01 08:00:00", "NT", "POS")
+
 # save the min max sequence in a vector to plot it against the corresponding probabilities
-tr2 <- seq(min.mwork, max.mwork)
+tr2 <- seq(0, 775)
 
 library(ggplot2)
 qplot(tr2,tr, geom="line")
 
-
-
-
-getCallProbForMarginalWorkPrice <- function(data, mwor) {
-
-  library(dplyr)
-
-  prob <- round(nrow(filter(data, marginalWorkPrice >= mwor))/nrow(data), digits = 2)
-
-
-  return(prob)
-}
-
-
-getCallProbDataSet <- function(data, min, max) {
-
-  df <- c()
-  for(i in seq(min, max)) {
-    df[i-min+1] <- getCallProbForMarginalWorkPrice(data, i)
-  }
-
-  return(df)
-}
 
 
 

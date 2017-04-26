@@ -166,9 +166,15 @@ getReserveAuctions <- function(startDate, endDate, rl) {
 #'
 #' @export
 #'
-getOneMinuteCalls <- function(needs, calls) {
+getOneMinuteCalls <- function(needs, calls, numCores) {
 
-  res <- approximateCallsInRecursion(needs, calls)
+  # If the parameter numCores is set then the user wants to use parallel computing
+  if(missing(numCores)) {
+    res <- approximateCallsInRecursion(needs, calls)
+  } else {
+    res <- parallelCompWrapperForApproximation(needs, calls, numCores)
+  }
+
   drops <- c("cuttedTime", "NEG", "POS", "product_name", "Homo_NEG", "Homo_POS", "avg_15min_MW_NEG", "avg_15min_MW_POS")
 
   res <- res[ , !(names(res) %in% drops)]

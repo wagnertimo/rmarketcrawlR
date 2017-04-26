@@ -223,8 +223,8 @@ getNumberOfPosOrNegIn15min <- function(dataframe) {
 
   # Scrape out all the 1min averages of the 4sec data by using unique
   # df.temp <- unique(dataframe[, c("cuttedTime","avg_1min_MW")])
-  # Add a Directions column for later use. Being able to group
-  dataframe$Direction <- as.factor(ifelse(dataframe$avg_1min_MW < 0, "NEG", "POS"))
+  # Add a Directions column for later use. Being able to group --> use numerical value for parallel comp
+  dataframe$Direction <- ifelse(dataframe$avg_1min_MW < 0, "NEG", "POS")
 
   if(getOption("logging")) print(paste("[INFO]: getNumberOfPosOrNegIn15min - Group by and counting"))
 
@@ -244,7 +244,7 @@ getNumberOfPosOrNegIn15min <- function(dataframe) {
   invisible(if(!("NEG" %in% colnames(test))) test$NEG <- 0)
   invisible(if(!("POS" %in% colnames(test))) test$POS <- 0)
 
-  if(getOption("logging")) print(paste("[INFO]: getNumberOfPosOrNegIn15min - Mmerging with input data.frame"))
+  if(getOption("logging")) print(paste("[INFO]: getNumberOfPosOrNegIn15min - Merging with input data.frame"))
 
   #r <- merge(dataframe, test, by = "cuttedTime")
   # If homogenity is the case then there are na entries. Therefore change them to 0
@@ -413,7 +413,7 @@ approxRecursionWith15minChunk <- function(dataframe) {
   # Counts the number of recursions which will be logged/printed in the console
   counter <- 0
 
-  # Do and repeat the recursion of counting NEG nad POS, correcting for homogenity, calculating the 15min NEG and POS avg of the needs, correct the needs
+  # Do and repeat the recursion of counting NEG and POS, correcting for homogenity, calculating the 15min NEG and POS avg of the needs, correct the needs
   repeat{
 
     counter <- counter + 1
@@ -424,11 +424,11 @@ approxRecursionWith15minChunk <- function(dataframe) {
     # print(df)
 
     # Add the numbers of negative and positive needs within 15min to the data.frame
-    rr <- getNumberOfPosOrNegIn15min(df)
+    z <- getNumberOfPosOrNegIn15min(df)
     # print(rr)
 
-    # merge with the original data.frame since the getNumberOfPosOrNegIn15min funtion does not combin it with its input
-    df <- merge(df, rr, by = "cuttedTime")
+    # merge with the original data.frame since the getNumberOfPosOrNegIn15min funtion does not combine it with its input
+    df <- merge(df, z, by = "cuttedTime")
     # print(df)
 
     # Handle Homogenity cases. Identify a homogene 15min section and set its smalles absolut value to 0 and reset/update the POS and NEG counters
@@ -805,128 +805,6 @@ preprocessOperatingReserveAuctions <- function(df.auctions) {
 
 
 
-
-
-#' @title approximateCalls
-#'
-#' @description This method builds the data.frame with all needed variables to correct the operating reserve needs power for approximating the calls.
-#'
-#' @param df.needs - The preprocessed operating reserve needs (@seealso preprocessOperatingReserveNeeds)
-#' @param df.calls - The preprocessed operating reserve calls (@seealso preprocessOperatingReserveCalls)
-#'
-#' @return A complete data.frame with all needed variables for correcting the operating reserve needs and approximating the calls.
-#'
-#' @examples
-#' df.needs <- getOperatingReserveNeeds("30.12.2015", "30.12.2015")
-#' df.calls <- getOperatingReserveCalls('30.12.2015', '30.12.2015', '6', 'SRL')
-#'
-#' df.needs <- preProcessOperatingReserveCalls(df.calls)
-#' df.calls <- preprocessOperatingReserveNeeds(df.needs)
-#'
-#' approximateCalls(df.needs, df.calls)
-#'
-#' @export
-#'
-approximateCalls <- function(df.needs, df.calls) {
-
-  library(dplyr)
-
-  if(getOption("logging")) print(paste("[INFO]: Called approximateCalls"))
-
-  # Calculate the 1min average operating reserve needs out of the 4sec data
-  df.needs.1min <- aggregateXminAVGMW(df.needs, 1)
-
-  if(getOption("logging")) print(paste("[INFO]: approximateCalls - Cut the 15min sections"))
-
-  # Join with 15min calls
-  # Cut 1min avg needs into 15min for join operation
-  df.needs.1min$cuttedTime <- cut(df.needs.1min$DateTime, breaks = paste("15", "min", sep = " "))
-  df.needs.1min$cuttedTime <- as.POSIXct(df.needs.1min$cuttedTime, tz = "MET")
-
-  # merge the 1min needs and 15min calls based on the cuttedTime
-  t.all <-  merge(df.needs.1min, df.calls, by.x = "cuttedTime", by.y = "DateTime")
-
-  #print(t.all)
-
-  # ----------- Here should start the recursion ------------------- #
-
-  # Add the numbers of negative and positive needs within 15min to the data.frame
-  nums <- getNumberOfPosOrNegIn15min(t.all)
-  t.all <- merge(t.all, nums, by = "cuttedTime")
-
-  #print(t.all)
-
-  # Consider 1. special case: Homogenity
-  # Now check for homogenity cases and modify the 1min avg values and numbers of NEG and POS
-  # If homogenity is the case then set the smallest absolute value of 1min avg need to zero and the 15/0 counts to 14/1. The rest stays the same.
-
-  # This is no longer neccessary in the second run of a recursion since at least now a crossing sets the counters away from 15/0
-  # BUT !!!! Whats with the case of a 14/1 in the first run (no homogenity) and then the correction leads to a 15/0 !!!
-  # keep homogenity in recursion!
-
-  h.c <- calcHomogenityCorrectness(t.all)
-
-  # Now it is time to compute the 15min averages for the needs and make the correction calculation
-  # Calculate the 15min average operating reserve needs for negative and positive power out of the 1min averages
-  h.c.15min.neg <- get15minAVGOf1minAVG(h.c, "NEG")
-  h.c.15min.pos <- get15minAVGOf1minAVG(h.c, "POS")
-
-
-  # Merge everything together by the passed through cuttedTime variable (cutting time is computational intensive!!)
-  # Left Join neccessary. In case of negative (positive) homogene 15min sections the averages of the positive (negative) values are missing NA
-  res <- left_join(h.c, h.c.15min.neg, by = "cuttedTime")%>%
-    left_join(h.c.15min.pos, by = "cuttedTime")
-  # set the missing homogene averages to 0
-  res[is.na(res)] <- 0
-
-  #print(res)
-
-  if(getOption("logging")) print(paste("[INFO]: approximateCalls - Calculate the corrected need values"))
-
-  # Init the Correction variable
-  res$Corrected <- 0
-
-  for(i in 1:nrow(res)) {
-
-    # Be aware of the case that there is homogenity and the smallest absolute value is zero --> then the if statement (<0) won't be activated.
-    # THerefore a special else statement for positive homogenity is needeed
-    if((res[i,]$Homo_NEG == 0 & res[i,]$Homo_POS == 0) | (res[i,]$Homo_NEG == 1 & res[i,]$Homo_POS == 0) | (res[i,]$Homo_NEG == 0 & res[i,]$Homo_POS == 1 & res[i,]$avg_1min_MW != 0)) {
-
-      # Calculate the corrected operating need value or the new approximated 1min call
-      res[i, ]$Corrected <- ifelse(res[i,]$avg_1min_MW < 0, res[i,]$avg_1min_MW + ((res[i,]$neg_MW - res[i,]$avg_15min_MW_NEG) * (15/res[i,]$NEG)),
-                            res[i,]$avg_1min_MW + ((res[i,]$pos_MW - res[i,]$avg_15min_MW_POS) * (15/res[i,]$POS)))
-
-
-      # print(paste("NORMAL CASE: Corrected value for", i, " obs. of ", res[i,]$avg_1min_MW, " is --> ", res[i, ]$Corrected))
-    }
-    else {
-      # a positive homogenity case occured --> Correction for the special case homogenity: The 0 value marks the smallest absolute value.
-      # This else statement is needed because the ifelse() above doesn#t trigger the NEG calculation because of the < 0 expression
-      # For positive homogenity, the 0 value is corrected by the opposite avgs and counts (NEG)
-      res[i, ]$Corrected <- if(res[i,]$Homo_POS == 1) res[i,]$neg_MW  * 15
-
-      # print(paste("SPECIAL CASE: SMALLEST VALUE REACHED ", i, " - ", res[i,]$avg_1min_MW, " Corrected value: ", res[i, ]$Corrected))
-
-      }
-  }
-
-  # TODO handle 2nd special case:
-  # CrossingZero: With the correction negative (positive) needs are too much corrected and go positive (negative)
-  #
-
-  # Formatting
-  # remove the 15min cuttedTime for better visuality
-  # res <- res[, !(names(res) %in% c("cuttedTime"))]
-
-  if(getOption("logging")) print(paste("[INFO]: approximateCalls - DONE"))
-
-  return(res)
-
-}
-
-
-
-
 #' @title approximateCalls
 #'
 #' @description This recursive approach handles the special case of CrossingZero. It builds the data.frame with all needed variables to correct the operating reserve needs power for approximating the calls.
@@ -967,6 +845,9 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
   # merge the 1min needs and 15min calls based on the cuttedTime
   t.all <-  merge(df.needs.1min, df.calls, by.x = "cuttedTime", by.y = "DateTime")
 
+  # reformat the data.frame for parallel computing --> DateTime and cuttedTime into numerical value!
+  t.all <- formatForApproximationAndParallelComp(t.all)
+
 
   if(getOption("logging")) print(paste("[INFO]: approximateCallsInRecursion - Split the 15min sections"))
 
@@ -978,6 +859,9 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
   # Init progress bar
   if(getOption("logging")) pb <- txtProgressBar(min = 0, max = length(path), style = 3)
 
+
+
+  # Do in parallel
   # For every 15min section do the recursion to correct the 1min avg needs
   for(i in 1:length(path)) {
 
@@ -992,8 +876,18 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
 
   }
 
+
+
+
+
   # CLose the progress bar
   if(getOption("logging")) close(pb)
+
+  # Reformat DateTime and cuttedTime
+  res$DateTime <- as.POSIXct(res$DateTime, "%Y-%m-%d %H:%M:%S", origin = "1970-01-01")
+  res$cuttedTime <- as.POSIXct(res$cuttedTime, "%Y-%m-%d %H:%M:%S", origin = "1970-01-01")
+  attr(res$DateTime, "tzone") <- "Europe/Berlin"
+  attr(res$cuttedTime, "tzone") <- "Europe/Berlin"
 
   if(getOption("logging")) print(paste("[INFO]: approximateCallsInRecursion - DONE"))
 
@@ -1002,6 +896,82 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
 }
 
 
+
+parallelCompWrapperForApproximation <- function(df.needs, df.calls, numCores) {
+
+  library(dplyr)
+  library(foreach)
+  library(doParallel)
+
+  if(getOption("logging")) print(paste("[INFO]: Called approximateCallsInRecursion"))
+
+  # Calculate the 1min average operating reserve needs out of the 4sec data
+  df.needs.1min <- aggregateXminAVGMW(df.needs, 1)
+
+  if(getOption("logging")) print(paste("[INFO]: approximateCallsInRecursion - Cut the 15min sections"))
+
+  # Join with 15min calls
+  # Cut 1min avg needs into 15min for join operation
+  df.needs.1min$cuttedTime <- cut(df.needs.1min$DateTime, breaks = paste("15", "min", sep = " "))
+  df.needs.1min$cuttedTime <- as.POSIXct(df.needs.1min$cuttedTime, tz = "MET")
+
+  # merge the 1min needs and 15min calls based on the cuttedTime
+  t.all <-  merge(df.needs.1min, df.calls, by.x = "cuttedTime", by.y = "DateTime")
+
+  # reformat the data.frame for parallel computing --> DateTime and cuttedTime into numerical value!
+  t.all <- formatForApproximationAndParallelComp(t.all)
+
+
+  if(getOption("logging")) print(paste("[INFO]: approximateCallsInRecursion - Split the 15min sections"))
+
+  # split the data.frame on the cuttedTime variable 15min sections
+  # creates a list
+  path <-  split(t.all, t.all[,1])
+  # Init the merge data.frame
+  #res <- data.frame()
+
+
+  # Do in parallel
+  # For every 15min section do the recursion to correct the 1min avg needs
+
+  cl <- makeCluster(numCores) #not to overload your computer
+  registerDoParallel(cl)
+
+  res <- foreach(i = 1:length(path),
+                 .combine = c,
+                 .export = c("approxRecursionWith15minChunk","getNumberOfPosOrNegIn15min","calcHomogenityCorrectness","get15minAVGs","correctionCalculationForRecursion", "get15minAVGOf1minAVG"),
+                 .packages = c("dplyr","magrittr", "tidyr"),
+                 .verbose=TRUE) %dopar% {
+
+    # ----------- Here starts the recursion ------------------- #
+    # Do and repeat the recursion of counting NEG nad POS, correcting for homogenity, calculating the 15min NEG and POS avg of the needs, correct the needs
+    temp <- approxRecursionWith15minChunk(path[[i]])
+    temp
+  }
+
+  #stop cluster
+  stopCluster(cl)
+
+
+  # Reformat DateTime and cuttedTime
+  res$DateTime <- as.POSIXct(res$DateTime, "%Y-%m-%d %H:%M:%S", origin = "1970-01-01")
+  res$cuttedTime <- as.POSIXct(res$cuttedTime, "%Y-%m-%d %H:%M:%S", origin = "1970-01-01")
+  attr(res$DateTime, "tzone") <- "Europe/Berlin"
+  attr(res$cuttedTime, "tzone") <- "Europe/Berlin"
+
+  if(getOption("logging")) print(paste("[INFO]: approximateCallsInRecursion - DONE"))
+
+  return(res)
+
+}
+
+
+formatForApproximationAndParallelComp <- function(df) {
+
+  df$DateTime <- as.numeric(df$DateTime)
+  df$cuttedTime <- as.numeric(df$cuttedTime)
+  return(df)
+}
 
 
 
@@ -1173,6 +1143,80 @@ formatAuctionsForParallelComp <- function(auctions) {
 }
 
 
+
+
+#' @title getCallProbDataSet
+#'
+#' @description This functions calculates for each price within a given price range the call probability specified on a time period and product type (Tarif and Direction).
+#' Be aware that undefined time periods and/or Tarifs and Directions can lead to and error/exception which is not handled. So be sure that the time period and Tarif and Direction is valid/exist within the given input data.frame.
+#'
+#' @param data - the data.frame with the calculated marginal workprices from the approximated 1min calls (@seealso getMarginalWorkPrices)
+#' @param numCores - set the number of cores to be used for parallel computation
+#' @param price.seq.start - specifies the start price of a price range for which call probabilities should be calculated
+#' @param price.seq.end - specifies the end price of a price range for which call probabilities should be calculated
+#' @param start.DateTime - specifies the start date of a time period for which call probabilities should be calculated
+#' @param end.DateTime - specifies the end date of a time period for which call probabilities should be calculated
+#' @param tarif - name the Tarif ("HT" or "NT") for which call probabilities should be calculated. In combination with the Direction variable this specifies the product type.
+#' @param direction - name the Direction ("POS" or "NEG") for which call probabilities should be calculated. In combination with the Tarif variable this specifies the product type.
+#'
+#' @return an array with all the call probabilities of the specified timeperiod and price range.
+#'
+#' @examples
+#' needs <- getOperatingReserveNeeds('01.01.2016', '02.01.2016')
+#' calls <- getOperatingReserveCalls('01.01.2016', '02.01.2016', '6', 'SRL')
+#' auctions <- getOperatingReserveAuctions('28.12.2016', '02.01.2016', '2')
+#'
+#' mwork.parallel <- getMarginalWorkPrices(needs,calls,auctions,2)
+#' call.probs <- getCallProbDataSet(mwork.parallel, 1, 0, max.mwork, "2016-01-01 00:00:00", "2016-01-01 08:00:00", "NT", "POS")
+#'
+#' # Plot the call probabilities. Therefore create an array with the price range
+#' library(ggplot2)
+#' price.range <- seq(0, ceiling(max.mwork))
+#' qplot(price.range, call.probs, geom="line")
+#'
+#'
+#' @export
+#'
+getCallProbDataSet <- function(data, numCores, price.seq.start, price.seq.end, start.DateTime, end.DateTime, tarif, direction) {
+
+  library(foreach)
+  library(doParallel)
+
+  cl <- makeCluster(numCores) #not to overload your computer
+  registerDoParallel(cl)
+
+  # Calculate for each price within the given price range the call probability specified on a time period and product type (Tarif and Direction)
+  df <- foreach(i = price.seq.start:ceiling(price.seq.end),
+                .combine = c,
+                .export = c("getCallProbForMarginalWorkPrice"),
+                .packages = c("dplyr"),
+                .verbose=FALSE) %dopar% {
+
+                  temp <- getCallProbForMarginalWorkPrice(data, i, start.DateTime, end.DateTime, tarif, direction)
+                  temp
+                }
+
+  #stop cluster
+  stopCluster(cl)
+
+  return(df)
+}
+
+
+#' This is a helper method needed in the @seealso getCallProbDataSet function
+getCallProbForMarginalWorkPrice <- function(data, mwp, startTime, endTime, tarif, direction) {
+
+  library(dplyr)
+
+  # get the total amount of all marginal work prices which are less or equal the given price example and fit within the Tarif and Direction (product type)
+  num.filtered.prices <- nrow(filter(data, data$marginal_work_price >= mwp & tarif == data$Tarif & direction == data$Direction & startTime <= data$DateTime & data$DateTime <= endTime))
+  # get the total amount of data within the given time period. Also consider other directions and tarifs !?!?!
+  num.filtered.date <- nrow(filter(data, startTime <= data$DateTime & data$DateTime <= endTime))
+  # Compute the call probability for the given price, round by 2
+  prob <- round(num.filtered.prices/num.filtered.date, digits = 4)
+
+  return(prob)
+}
 
 
 

@@ -4,7 +4,7 @@
 \alias{getOneMinuteCalls}
 \title{getOneMinuteCalls}
 \usage{
-getOneMinuteCalls(needs, calls)
+getOneMinuteCalls(needs, calls, numCores)
 }
 \arguments{
 \item{needs}{- The preprocessed operating reserve needs (@seealso getReserveNeeds)}
