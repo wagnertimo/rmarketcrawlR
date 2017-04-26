@@ -4,8 +4,8 @@
 \alias{getCallProbDataSet}
 \title{getCallProbDataSet}
 \usage{
-getCallProbDataSet(data, numCores, price.seq.start, price.seq.end,
-  start.DateTime, end.DateTime, tarif, direction)
+getCallProbDataSet(data, numCores, price.seq.start, price.seq.end, tarif,
+  direction)
 }
 \arguments{
 \item{data}{- the data.frame with the calculated marginal workprices from the approximated 1min calls (@seealso getMarginalWorkPrices)}
@@ -15,10 +15,6 @@ getCallProbDataSet(data, numCores, price.seq.start, price.seq.end,
 \item{price.seq.start}{- specifies the start price of a price range for which call probabilities should be calculated}
 
 \item{price.seq.end}{- specifies the end price of a price range for which call probabilities should be calculated}
-
-\item{start.DateTime}{- specifies the start date of a time period for which call probabilities should be calculated}
-
-\item{end.DateTime}{- specifies the end date of a time period for which call probabilities should be calculated}
 
 \item{tarif}{- name the Tarif ("HT" or "NT") for which call probabilities should be calculated. In combination with the Direction variable this specifies the product type.}
 
@@ -32,12 +28,12 @@ This functions calculates for each price within a given price range the call pro
 Be aware that undefined time periods and/or Tarifs and Directions can lead to and error/exception which is not handled. So be sure that the time period and Tarif and Direction is valid/exist within the given input data.frame.
 }
 \examples{
-needs <- getOperatingReserveNeeds('01.01.2016', '02.01.2016')
-calls <- getOperatingReserveCalls('01.01.2016', '02.01.2016', '6', 'SRL')
-auctions <- getOperatingReserveAuctions('28.12.2016', '02.01.2016', '2')
+needs <- getOperatingReserveNeeds('01.01.2016', '10.01.2016')
+calls <- getOperatingReserveCalls('01.01.2016', '10.01.2016', '6', 'SRL')
+auctions <- getOperatingReserveAuctions('28.12.2015', '10.01.2016', '2')
 
 mwork.parallel <- getMarginalWorkPrices(needs,calls,auctions,2)
-call.probs <- getCallProbDataSet(mwork.parallel, 1, 0, max.mwork, "2016-01-01 00:00:00", "2016-01-01 08:00:00", "NT", "POS")
+call.probs <- getCallProbDataSet(mwork.parallel, 1, 0, 775, "2016-01-01 00:00:00", "2016-01-01 23:59:59", "NT", "POS")
 
 # Plot the call probabilities. Therefore create an array with the price range
 library(ggplot2)

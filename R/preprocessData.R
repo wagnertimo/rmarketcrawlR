@@ -1103,10 +1103,11 @@ matchAuctionsWithCalls <- function(auction.results, callObj){
   ss <- auction.results %>%
     filter(date_from <= callObj$DateTime & callObj$DateTime <= date_to & callObj$Tarif == Tarif & callObj$Direction == Direction) %>%
     arrange(work_price) %>%
-    mutate(cumsum = cumsum(offered_power_MW)) %>%
-    filter(cumsum <= abs(callObj$avg_1min_MW)) %>%
-    summarise(m = max(work_price))
-  ss$m
+    mutate(cumsum = cumsum(offered_power_MW))
+  # Get the next higher offer otherwise there will be -Inf for 1min calls less than 5MW (since 5MW is the smallest possible offer)
+  index <- nrow(filter(ss, cumsum <= abs(callObj$avg_1min_MW)))
+  m <- ss[min(index + 1, nrow(ss)), ]$work_price
+  m
 }
 
 # returns the minimal input data.frame which the getMarginalWorkPrice function needs
@@ -1154,8 +1155,6 @@ formatAuctionsForParallelComp <- function(auctions) {
 #' @param numCores - set the number of cores to be used for parallel computation
 #' @param price.seq.start - specifies the start price of a price range for which call probabilities should be calculated
 #' @param price.seq.end - specifies the end price of a price range for which call probabilities should be calculated
-#' @param start.DateTime - specifies the start date of a time period for which call probabilities should be calculated
-#' @param end.DateTime - specifies the end date of a time period for which call probabilities should be calculated
 #' @param tarif - name the Tarif ("HT" or "NT") for which call probabilities should be calculated. In combination with the Direction variable this specifies the product type.
 #' @param direction - name the Direction ("POS" or "NEG") for which call probabilities should be calculated. In combination with the Tarif variable this specifies the product type.
 #'
@@ -1177,7 +1176,7 @@ formatAuctionsForParallelComp <- function(auctions) {
 #'
 #' @export
 #'
-getCallProbDataSet <- function(data, numCores, price.seq.start, price.seq.end, start.DateTime, end.DateTime, tarif, direction) {
+getCallProbDataSet <- function(data, numCores, price.seq.start, price.seq.end, tarif, direction) {
 
   library(foreach)
   library(doParallel)
@@ -1192,7 +1191,7 @@ getCallProbDataSet <- function(data, numCores, price.seq.start, price.seq.end, s
                 .packages = c("dplyr"),
                 .verbose=FALSE) %dopar% {
 
-                  temp <- getCallProbForMarginalWorkPrice(data, i, start.DateTime, end.DateTime, tarif, direction)
+                  temp <- getCallProbForMarginalWorkPrice(data, i, tarif, direction)
                   temp
                 }
 
@@ -1204,16 +1203,14 @@ getCallProbDataSet <- function(data, numCores, price.seq.start, price.seq.end, s
 
 
 #' This is a helper method needed in the @seealso getCallProbDataSet function
-getCallProbForMarginalWorkPrice <- function(data, mwp, startTime, endTime, tarif, direction) {
+getCallProbForMarginalWorkPrice <- function(data, mwp, tarif, direction) {
 
   library(dplyr)
 
   # get the total amount of all marginal work prices which are less or equal the given price example and fit within the Tarif and Direction (product type)
-  num.filtered.prices <- nrow(filter(data, data$marginal_work_price >= mwp & tarif == data$Tarif & direction == data$Direction & startTime <= data$DateTime & data$DateTime <= endTime))
-  # get the total amount of data within the given time period. Also consider other directions and tarifs !?!?!
-  num.filtered.date <- nrow(filter(data, startTime <= data$DateTime & data$DateTime <= endTime))
+  num.filtered.prices <- nrow(filter(data, data$marginal_work_price >= mwp & tarif == data$Tarif & direction == data$Direction))
   # Compute the call probability for the given price, round by 2
-  prob <- round(num.filtered.prices/num.filtered.date, digits = 4)
+  prob <- round(num.filtered.prices/nrow(data), digits = 4)
 
   return(prob)
 }

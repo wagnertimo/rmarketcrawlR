@@ -88,13 +88,13 @@ marginal.prices.parallel = getMarginalWorkPrices(needs, calls, auctions, numCore
 
 #### Calculate the call probabilities
 
-Now that you have the data set with the 1min approximated calls and their respective marginal work price, you are able to compute call probabilities for different given work prices and product types (Tarif and Direction, e.g. `NT_NEG`) in a specified time period. Therefore the function `getCallProbDataSet()` is implemented. It uses parallel computing, so it is necessary to specify the processors cores parameter `numCores`.
+Now that you have the data set with the 1min approximated calls and their respective marginal work price, you are able to compute call probabilities for different given work prices and product types (Tarif and Direction, e.g. `NT_NEG`) of the whole input data.frame. Therefore the function `getCallProbDataSet()` is implemented. It uses parallel computing, so it is necessary to specify the processors cores parameter `numCores`. The input data set has to have the `marginal_work_price` variable. You can subset the input data set in the forehand for varies time periods.
 
 ```r
 # Use the crawled data from above. Logging is set to true.
 
-# Get the call probabilities for one day (2016-01-01) of the product "NT_POS" and within the price range of 0 to 775 (this is the max marginal work price for that period). Use only one process core for the parallel computation.
-call.probs <- getCallProbDataSet(mwork.parallel, 1, 0, 775, "2016-01-01 00:00:00", "2016-01-01 23:59:59", "NT", "POS")
+# Get the call probabilities for the whole data set of the product "NT_POS" and within the price range of 0 to 775 (this is the max marginal work price for that period). Use only one process core for the parallel computation.
+call.probs <- getCallProbDataSet(mwork.parallel, 1, 0, 775, "NT", "POS")
 
 # Plot the call probabilities. Therefore create an array with the price range for the x axis. On the y axis set the computed call.probs
 library(ggplot2)

@@ -4,7 +4,7 @@
 \alias{getCallProbForMarginalWorkPrice}
 \title{This is a helper method needed in the @seealso getCallProbDataSet function}
 \usage{
-getCallProbForMarginalWorkPrice(data, mwp, startTime, endTime, tarif, direction)
+getCallProbForMarginalWorkPrice(data, mwp, tarif, direction)
 }
 \description{
 This is a helper method needed in the @seealso getCallProbDataSet function

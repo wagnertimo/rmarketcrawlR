@@ -60,7 +60,6 @@ system.time(getMarginalWorkPrices(needs,calls,auctions,2))
 
 
 
-
 # start.time <- Sys.time()
 # mwork <- getMarginalWorkPrices(needs,calls,auctions)
 # end.time <- Sys.time()
@@ -138,7 +137,7 @@ df.prep.needs.2016 <- preprocessOperatingReserveNeeds(df.needs.2016)
 #'------------------------------------------------------------------------------------------------------
 
 # Approximate the calls WITH RECURSION
-df.aprx.calls.2016 <- approximateCallsInRecursion(df.prep.needs.2016, df.prep.calls.2016)
+#df.aprx.calls.2016 <- approximateCallsInRecursion(df.prep.needs.2016, df.prep.calls.2016)
 
 
 #'------------------------------------------------------------------------------------------------------
@@ -147,7 +146,7 @@ df.aprx.calls.2016 <- approximateCallsInRecursion(df.prep.needs.2016, df.prep.ca
 #'
 #'------------------------------------------------------------------------------------------------------
 
-mwork <- getMarginalWorkPrices(df.aprx.calls.2016, df.prep.auctions.2016)
+#mwork <- getMarginalWorkPrices(df.aprx.calls.2016, df.prep.auctions.2016)
 
 
 
@@ -326,8 +325,10 @@ max.mwork <- max(mwork.parallel$marginal_work_price) # e.g. 774.6, 5999.97
 
 # Beginning at a value below the min will lead to 100% call probability !! Be aware of different tarifs
 
+
+
 # get the probability vector of the min max sequence
-tr <- getCallProbDataSet(mwork.parallel, 1, 0, 775, "2016-01-01 00:00:00", "2016-01-01 23:59:59", "NT", "POS")
+tr <- getCallProbDataSet(mwork.parallel, 1, 0, 775, "NT", "NEG")
 
 # save the min max sequence in a vector to plot it against the corresponding probabilities
 tr2 <- seq(0, 775)
