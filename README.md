@@ -1,4 +1,4 @@
-# rmarketcrawlR
+# rmarketcrawlR – The R package for crawling data of the german energy reserve market
 
 
 ## Goal
