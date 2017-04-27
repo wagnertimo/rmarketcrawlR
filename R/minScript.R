@@ -56,6 +56,12 @@ setLogging <- function(logger) {
 #' @export
 #'
 getReserveNeeds <- function(startDate, endDate) {
+  library(logging)
+
+  # Setup the logger and handlers
+  basicConfig(level="DEBUG") # parameter level = x, with x = debug(10), info(20), warn(30), critical(40) // setLevel()
+  nameLogFile <- paste("getReserveNeeds_", Sys.time(), ".txt", sep="")
+  addHandler(writeToFile, file=nameLogFile, level='DEBUG')
 
   df <- preprocessOperatingReserveNeeds(getOperatingReserveNeeds(startDate, endDate))
 
@@ -93,6 +99,12 @@ getReserveNeeds <- function(startDate, endDate) {
 #' @export
 #'
 getReserveCalls <- function(startDate, endDate, uenb, rl) {
+  library(logging)
+
+  # Setup the logger and handlers
+  basicConfig(level="DEBUG") # parameter level = x, with x = debug(10), info(20), warn(30), critical(40) // setLevel()
+  nameLogFile <- paste("getReserveCalls_", Sys.time(), ".txt", sep="")
+  addHandler(writeToFile, file=nameLogFile, level='DEBUG')
 
   df <- preProcessOperatingReserveCalls(getOperatingReserveCalls(startDate, endDate, uenb, rl))
 
@@ -132,6 +144,12 @@ getReserveCalls <- function(startDate, endDate, uenb, rl) {
 #' @export
 #'
 getReserveAuctions <- function(startDate, endDate, rl) {
+  library(logging)
+
+  # Setup the logger and handlers
+  basicConfig(level="DEBUG") # parameter level = x, with x = debug(10), info(20), warn(30), critical(40) // setLevel()
+  nameLogFile <- paste("getReserveAuctions_", Sys.time(), ".txt", sep="")
+  addHandler(writeToFile, file=nameLogFile, level='DEBUG')
 
   df <- preprocessOperatingReserveAuctions(getOperatingReserveAuctions(startDate, endDate, rl))
 
@@ -167,6 +185,12 @@ getReserveAuctions <- function(startDate, endDate, rl) {
 #' @export
 #'
 getOneMinuteCalls <- function(needs, calls, numCores) {
+  library(logging)
+
+  # Setup the logger and handlers
+  basicConfig(level="DEBUG") # parameter level = x, with x = debug(10), info(20), warn(30), critical(40) // setLevel()
+  nameLogFile <- paste("getOneMinuteCalls_", Sys.time(), ".txt", sep="")
+  addHandler(writeToFile, file=nameLogFile, level='DEBUG')
 
   # If the parameter numCores is set then the user wants to use parallel computing
   if(missing(numCores)) {
@@ -182,6 +206,8 @@ getOneMinuteCalls <- function(needs, calls, numCores) {
   names(res)[names(res)=="avg_1min_MW"] <- "approx_1min_call"
 
   return(res)
+
+  if(getOption("logging")) loginfo("getOneMinuteCalls - DONE")
 
 }
 
@@ -212,7 +238,12 @@ getOneMinuteCalls <- function(needs, calls, numCores) {
 #' @export
 #'
 getMarginalWorkPrices <- function(needs, calls, auctions, numCores) {
+  library(logging)
 
+  # Setup the logger and handlers
+  basicConfig(level="DEBUG") # parameter level = x, with x = debug(10), info(20), warn(30), critical(40) // setLevel()
+  nameLogFile <- paste("getMarginalWorkPrices_", Sys.time(), ".txt", sep="")
+  addHandler(writeToFile, file=nameLogFile, level='DEBUG')
 
   # If the parameter numCores is set then the user wants to use parallel computing
   if(missing(numCores)) {
@@ -227,6 +258,8 @@ getMarginalWorkPrices <- function(needs, calls, auctions, numCores) {
   df <- df[ , !(names(df) %in% drops)]
 
   names(df)[names(df)=="avg_1min_MW"] <- "approx_1min_call"
+
+  if(getOption("logging")) loginfo("getMarginalWorkPrices - DONE")
 
   return(df)
 

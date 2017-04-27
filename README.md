@@ -33,6 +33,8 @@ Before using this R package, please check that you have installed the following 
 - `ggplot2`
 - `doParallel`
 - `foreach`
+- `logging`
+
 
 ### Usage
 

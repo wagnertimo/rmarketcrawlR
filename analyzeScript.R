@@ -325,10 +325,19 @@ max.mwork <- max(mwork.parallel$marginal_work_price) # e.g. 774.6, 5999.97
 
 # Beginning at a value below the min will lead to 100% call probability !! Be aware of different tarifs
 
+library(dplyr)
+library(lubridate)
+
+mwork.parallel$DateClass <- ifelse(wday(mwork.parallel$DateTime) == 7 | wday(mwork.parallel$DateTime) == 6, "Weekend", "Workday")
+
+# week days 1 == monday ... 7 == sunday
+sund <- filter(mwork.parallel, wday(mwork.parallel$DateTime) == 7)
+satd <- filter(mwork.parallel, wday(DateTime) == 6)
+
 
 
 # get the probability vector of the min max sequence
-tr <- getCallProbDataSet(mwork.parallel, 1, 0, 775, "NT", "NEG")
+tr <- getCallProbDataSet(satd, 1, 0, 775, "NT", "NEG")
 
 # save the min max sequence in a vector to plot it against the corresponding probabilities
 tr2 <- seq(0, 775)

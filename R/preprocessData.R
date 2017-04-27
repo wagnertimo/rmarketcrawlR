@@ -77,14 +77,15 @@ isGermanHoliday <- function(dateTime) {
 #' @export
 #'
 aggregateXminAVGMW <- function(df.needs, xmin) {
+  library(logging)
 
-  if(getOption("logging")) print(paste("[INFO]: aggregateXminAVGMW - Cut time"))
+  if(getOption("logging")) loginfo(paste("aggregateXminAVGMW - Cut time in ", xmin, "min"))
 
   # Cut the Date-Times into Minutes such that every 4sec observation belongs to a bigger group of minutes
   df.needs$cuttedTime <- cut(df.needs$DateTime, breaks = paste(xmin, "min", sep = " "))
   df.needs$cuttedTime <- as.POSIXct(df.needs$cuttedTime, tz = "MET")
 
-  if(getOption("logging")) print(paste("[INFO]: aggregateXminAVGMW - Calculate average"))
+  if(getOption("logging")) loginfo(paste("aggregateXminAVGMW - Calculate average of ",xmin,"min"))
 
   # Create a data.frame with the mean values of the required MW in operating reserve power for every minute based on the cutted time
   df.needs.avg <- aggregate(x = df.needs$MW,
@@ -105,7 +106,6 @@ aggregateXminAVGMW <- function(df.needs, xmin) {
 #' @description This method takes a data.frame of 1 min average values of operating reserve needs (@seealso aggregateXminAVGMW) and calculates the average values of a specific time window.
 #'
 #' @param dataframe - the data.frame with operating reserve needs (already preprocessed) and cuttedTime variable 15min is passed in (save computation time!)
-#' @param xmin - the time window for which the average should be calculated (should be 15)
 #' @param direction - specifies the positive or negative operating reserve need
 #'
 #' @return a data.frame with corresponding average values on the given time window ("cuttedTime")
@@ -113,13 +113,12 @@ aggregateXminAVGMW <- function(df.needs, xmin) {
 #' @examples
 #' df.needs <- getOperatingReserveNeeds("30.12.2015", "30.12.2015")
 #' df.needs.preprocessed <- preprocessOperatingReserveNeeds(df.needs)
-#' df.avg.15min.neg <- getAVGXmin(df.needs.preprocessed, 15, "NEG")
+#' df.avg.15min.neg <- getAVGXmin(df.needs.preprocessed, "NEG")
 #'
 #' @export
 #'
 get15minAVGOf1minAVG <- function(dataframe, direction) {
-
-  # print(paste("[INFO]: get15minAVGOf1minAVG for direction ", direction, " - Cut time and build 15min blocks"))
+  library(logging)
 
   # Sample down the 1min avg values from the 4sec operating reserve need data
   # Choose only the 4sec DateTime and the 1 min average need
@@ -139,7 +138,7 @@ get15minAVGOf1minAVG <- function(dataframe, direction) {
   # In the case of pure homogenity (only POS direction or only NEG) then the dataframe is empty
   if(nrow(dataframe2) != 0){
 
-    if(getOption("logging")) print(paste("[INFO]: get15minAVGOf1minAVG for direction ", direction, " - calculate average"))
+    if(getOption("logging")) loginfo(paste("get15minAVGOf1minAVG for direction ", direction, " - calculate average"))
 
     # Create a data.frame with the mean values of the required MW in operating reserve power for every minute based on the cutted time
     df <- aggregate(x = dataframe2$avg_1min_MW,
@@ -210,7 +209,7 @@ get15minAVGs <- function(dataframe) {
 #' @export
 #'
 getNumberOfPosOrNegIn15min <- function(dataframe) {
-
+  library(logging)
   library(dplyr)
   library(tidyr)
   library(magrittr)
@@ -226,7 +225,7 @@ getNumberOfPosOrNegIn15min <- function(dataframe) {
   # Add a Directions column for later use. Being able to group --> use numerical value for parallel comp
   dataframe$Direction <- ifelse(dataframe$avg_1min_MW < 0, "NEG", "POS")
 
-  if(getOption("logging")) print(paste("[INFO]: getNumberOfPosOrNegIn15min - Group by and counting"))
+  if(getOption("logging")) loginfo(paste("getNumberOfPosOrNegIn15min - ", reformatDateTime(dataframe[1,]$DateTime), " - Group by and counting", sep=""))
 
   # Goal now to count for every 15 minute sections seperatly the NEG and POS averages from the 1min data
   # Use piping statements for convenience. Group by the 15min sections and the NEG and POS and count their NEG and POS appereance.
@@ -234,7 +233,7 @@ getNumberOfPosOrNegIn15min <- function(dataframe) {
     group_by(cuttedTime, Direction) %>%
     summarise(n= n())
 
-  if(getOption("logging")) print(paste("[INFO]: getNumberOfPosOrNegIn15min - Reshaping input data.frame"))
+  if(getOption("logging")) loginfo(paste("getNumberOfPosOrNegIn15min - ", reformatDateTime(dataframe[1,]$DateTime), " - Reshaping input data.frame"))
 
   # tidyr function spread reshapes that counting table to be able to merge it with the input data.frame
   test <- spread(test, Direction, n)
@@ -244,7 +243,7 @@ getNumberOfPosOrNegIn15min <- function(dataframe) {
   invisible(if(!("NEG" %in% colnames(test))) test$NEG <- 0)
   invisible(if(!("POS" %in% colnames(test))) test$POS <- 0)
 
-  if(getOption("logging")) print(paste("[INFO]: getNumberOfPosOrNegIn15min - Merging with input data.frame"))
+  if(getOption("logging")) loginfo(paste("getNumberOfPosOrNegIn15min - ", reformatDateTime(dataframe[1,]$DateTime), " - Merging with input data.frame"))
 
   #r <- merge(dataframe, test, by = "cuttedTime")
   # If homogenity is the case then there are na entries. Therefore change them to 0
@@ -272,14 +271,14 @@ getNumberOfPosOrNegIn15min <- function(dataframe) {
 #' @export
 #'
 calcHomogenityCorrectness <- function(dataframe) {
-
+  library(logging)
   #
   # POSSIBLE PROBLEM: WHAT IF MORE EQUAL SMALLEST ABSOLUTE VALUES
   #
 
   library(dplyr)
 
-  if(getOption("logging")) print(paste("[INFO]: calcHomogenityCorrectness - Find the homogenity cases and its smallest absolute value"))
+  if(getOption("logging")) loginfo(paste("calcHomogenityCorrectness - ", reformatDateTime(dataframe[1,]$DateTime), " - Find the homogenity cases and its smallest absolute value"))
 
   # Approach:
   # Identify the homogenity cases of the input data.frame --> NEG (POS) count is 15 (only NEG or POS 1min avg needs) and the 15min call is positive (negative).
@@ -298,7 +297,7 @@ calcHomogenityCorrectness <- function(dataframe) {
     # Merge the original dataframe with the minimum values
     dataframe <- left_join(dataframe, h.min, by = c("cuttedTime" = "cuttedTime"))
 
-    if(getOption("logging")) print(paste("[INFO]: calcHomogenityCorrectness - Update the NEG and POS and 1min avg values"))
+    if(getOption("logging")) loginfo(paste("calcHomogenityCorrectness - ", reformatDateTime(dataframe[1,]$DateTime), " - Update the NEG and POS and 1min avg values"))
 
     # 2. Now update the 1min avg needs value such that the smallest absolute value gets the 0 value and the NEG and POS counts get 14/1
     dataframe$Homo_NEG <- 0
@@ -360,8 +359,8 @@ calcHomogenityCorrectness <- function(dataframe) {
 #' @export
 #'
 correctionCalculationForRecursion <- function(res) {
-
-  if(getOption("logging")) print(paste("[INFO]: correctionCalculationForRecursion - Update avg_1min_MW"))
+  library(logging)
+  if(getOption("logging")) loginfo(paste("correctionCalculationForRecursion - ", reformatDateTime(res[1,]$DateTime), " - Update avg_1min_MW"))
 
   # Init the Correction variable
   # No extra variable needed for recursion.
@@ -408,7 +407,7 @@ correctionCalculationForRecursion <- function(res) {
 #'
 #'
 approxRecursionWith15minChunk <- function(dataframe) {
-
+  library(logging)
   res <- dataframe
   # Counts the number of recursions which will be logged/printed in the console
   counter <- 0
@@ -417,7 +416,7 @@ approxRecursionWith15minChunk <- function(dataframe) {
   repeat{
 
     counter <- counter + 1
-    if(getOption("logging")) print(paste("[INFO]: approxRecursionWith15minChunk - Recursion number: ", counter))
+    if(getOption("logging")) loginfo(paste("approxRecursionWith15minChunk - ", reformatDateTime(res[1,]$DateTime), " - Recursion number: ", counter, sep = ""))
 
     # (re-)set the input data.frame
     df <- res[,!(names(res) %in% c("Corrected", "Direction", "NEG", "POS", "Homo_NEG", "Homo_POS", "avg_15min_MW_NEG", "avg_15min_MW_POS"))]
@@ -444,14 +443,25 @@ approxRecursionWith15minChunk <- function(dataframe) {
     # print(res)
 
 
+    #
+    # TODO print/log average values of aggregated needs and real 15min calls and number of neg pos
+    # --> There was an error --> recursion was in an infinite loop
+    #
+    min15avgNegNeeds <- get15minAVGOf1minAVG(res, "NEG")$avg_15min_MW_NEG
+    min15avgPosNeeds <- get15minAVGOf1minAVG(res, "POS")$avg_15min_MW_POS
+    min15CallNeg <- unique(res$neg_MW)
+    min15CallPos <- unique(res$pos_MW)
+    if(getOption("logging")) logdebug(paste("approxRecursionWith15minChunk - ", reformatDateTime(res[1,]$DateTime), " - 15min NEG avg needs: ", min15avgNegNeeds, " vs. 15min NEG calls: ", min15CallNeg, sep=""))
+    if(getOption("logging")) logdebug(paste("approxRecursionWith15minChunk - ", reformatDateTime(res[1,]$DateTime), " - 15min POS avg needs: ", min15avgPosNeeds, " vs. 15min POS calls: ", min15CallPos, sep=""))
+
     # Check if the stop criteria of the recursion is met.
     # The 15min NEG and POS avg of the needs must equal the corresponding neg and pos 1min calls.
     # Normally it should be that one of the statements of NEG or POS avg is TRUE the other must also be true.
     # This coulld maybe differ when computational errors occur!
     # Use isTRUE(all.equal()) comparison instead of == because of floating point arithemtic
-    if(isTRUE(all.equal(get15minAVGOf1minAVG(res, "NEG")$avg_15min_MW_NEG, unique(res$neg_MW))) & isTRUE(all.equal(get15minAVGOf1minAVG(res, "POS")$avg_15min_MW_POS, unique(res$pos_MW)))){
+    if(isTRUE(all.equal(min15avgNegNeeds, min15CallNeg)) & isTRUE(all.equal(min15avgPosNeeds, min15CallPos))){
 
-      if(getOption("logging")) print(paste("[INFO]: approxRecursionWith15minChunk - Averages equal"))
+      if(getOption("logging")) loginfo(paste("approxRecursionWith15minChunk - ", reformatDateTime(res[1,]$DateTime), " - Averages equal"))
 
       # Update the new avg_15min_MW_NEG and avg_15min_MW_POS for the data.frame. Although it is now redundant because it is equal to neg_MW and pos_MW
       res <- get15minAVGs(res[,!(names(res) %in% c("avg_15min_MW_NEG", "avg_15min_MW_POS"))])
@@ -487,8 +497,9 @@ approxRecursionWith15minChunk <- function(dataframe) {
 #' @export
 #'
 markCrossingZero <- function(df) {
+  library(logging)
 
-  if(getOption("logging")) print(paste("[INFO]: markCrossingZero - Loop through input and mark the negative and positive CZ"))
+  if(getOption("logging")) loginfo("markCrossingZero - Loop through input and mark the negative and positive CZ")
 
   # Here the homogenity case is excluded. The smalelst absolute value is set artificially to zero in a homogene 15min section
   # Init the CrossingZero marking variables for negative (value goes from positive to negative) and positive case (value goes from neg to positive)
@@ -531,7 +542,7 @@ countCrossingZeros <- function(df) {
 
   library(dplyr)
 
-  if(getOption("logging")) print(paste("[INFO]: countCrossingZeros - Create the positive and negative counting tables"))
+  if(getOption("logging")) loginfo("countCrossingZeros - Create the positive and negative counting tables")
 
   # Init the data.frames such that all 15min sections of the input data.frame are initialized with value 0
   t.pos <- data.frame(unique(df$cuttedTime), 0)
@@ -566,12 +577,12 @@ countCrossingZeros <- function(df) {
     colnames(t.neg) <- c("cuttedTime", "n_neg_CZ")
   }
 
-  if(getOption("logging")) print(paste("[INFO]: countCrossingZeros - Merge negative and positive counting tables."))
+  if(getOption("logging")) loginfo("countCrossingZeros - Merge negative and positive counting tables.")
 
   # Merge the negative and positive CrossingZero counts into one data.frame to join it with the input data.frame
   t3 <- merge(t.pos,t.neg, by = "cuttedTime")
 
-  if(getOption("logging")) print(paste("[INFO]: countCrossingZeros - Left join the counting tables with the input"))
+  if(getOption("logging")) loginfo("countCrossingZeros - Left join the counting tables with the input")
 
   df <- left_join(df, t3, by = "cuttedTime")
 
@@ -625,17 +636,15 @@ countPositiveCrossingZerosForDF <- function(df) {
 #' @export
 #'
 preProcessOperatingReserveCalls <- function(df.calls) {
-
+  library(logging)
   library(data.table)
   library(lubridate)
-
-  if(getOption("logging")) print(paste("[INFO]: Called preProcessOperatingReserveCalls"))
 
   # Build variable DateTime out of Date and Time (as String) and neg_MW (with a negative num) and pos_MW
   # Time takes the value of "UHRZEIT.VON". The seconds are missing so add ":00"
 
   # TODO: Handle daylight savings CET and CEST --> Keep them as they are --> two 2 oclock hours
-  if(getOption("logging")) print(paste("[INFO]:preProcessOperatingReserveCalls - Formatting POSIXct DateTime object"))
+  if(getOption("logging")) loginfo("preProcessOperatingReserveCalls - Formatting POSIXct DateTime object")
   df.calls$DateTime <- as.POSIXct(paste(ymd(df.calls$DATUM), paste(df.calls$UHRZEIT.VON, ":00", sep = ""), sep=" "), tz = "Europe/Berlin")
   # Change, if there is an end of daylight savings in the time period, the two 2 oclock hours into CEST and CET
 
@@ -646,7 +655,7 @@ preProcessOperatingReserveCalls <- function(df.calls) {
   keeps <- c("DateTime", "neg_MW", "pos_MW")
   #keeps <- c("DateTime", "neg_MW", "pos_MW")
 
-  if(getOption("logging")) print(paste("[INFO]: preProcessOperatingReserveCalls - DONE"))
+  if(getOption("logging")) loginfo("preProcessOperatingReserveCalls - DONE")
 
   return(df.calls[, keeps])
 
@@ -665,23 +674,21 @@ preProcessOperatingReserveCalls <- function(df.calls) {
 #' @export
 #'
 preprocessOperatingReserveNeeds <- function(df.needs) {
-
+  library(logging)
   library(data.table)
   library(dplyr)
   library(magrittr)
-
-  if(getOption("logging")) print(paste("[INFO]: Called preprocessOperatingReserveNeeds"))
 
   # Build up a Date-Time object POSIXct for easier handling. Set the timezone to Middle Europe Time
   # format: e.g. 2017-30-12 00:00:04
 
   # TODO: Handle daylight savings CET and CEST
   # Change, if there is an end of daylight savings in the time period, the two 2 oclock hours 2A and 2B into CEST and CET
-  if(getOption("logging")) print(paste("[INFO]: preprocessOperatingReserveNeeds - Changing factor variable Time to character"))
+  if(getOption("logging")) loginfo("preprocessOperatingReserveNeeds - Changing factor variable Time to character")
   df.needs$Time <- as.character(df.needs$Time)
 
   # Find all rows with Time string variable starting with "2A" or "2B"and mutate its value by adding a "02" and concat it with its own minutes and seconds by splitting the string.
-  if(getOption("logging")) print(paste("[INFO]: preprocessOperatingReserveNeeds - Changing character string of daylight saving times"))
+  if(getOption("logging")) loginfo("preprocessOperatingReserveNeeds - Changing character string of daylight saving times")
   df.needs[df.needs$Time %like% "^2A" | df.needs$Time %like% "^2B",] %<>% mutate(Time = paste("02:",
                                                                                               sapply(strsplit(Time, ":"), "[", 2),
                                                                                               ":",
@@ -705,7 +712,7 @@ preprocessOperatingReserveNeeds <- function(df.needs) {
   #                                                    sep = ""))
 
   # Then set the POSIXct datetime format
-  if(getOption("logging")) print(paste("[INFO]: preprocessOperatingReserveNeeds - Formatting POSIXct datetime"))
+  if(getOption("logging")) loginfo("preprocessOperatingReserveNeeds - Formatting POSIXct datetime")
   df.needs$DateTime <- as.POSIXct(paste(df.needs$Date, df.needs$Time, sep=" "), tz = "Europe/Berlin")
 
   # Not sure when and if needed. This variable is redundant
@@ -713,7 +720,7 @@ preprocessOperatingReserveNeeds <- function(df.needs) {
 
   drops <- c("Date", "Time", "Type")
 
-  if(getOption("logging")) print(paste("[INFO]: preprocessOperatingReserveNeeds - DONE"))
+  if(getOption("logging")) loginfo("preprocessOperatingReserveNeeds - DONE")
 
   return(df.needs[ , !(names(df.needs) %in% drops)])
 
@@ -731,17 +738,14 @@ preprocessOperatingReserveNeeds <- function(df.needs) {
 #' @export
 #'
 addTarif <- function(df) {
-
+  library(logging)
   library(lubridate)
-
-  if(getOption("logging")) print(paste("[INFO]: Called addTarif"))
-
   # HT is Mon - Fri 8 - 20 without bank holiday
   # NT is else
   # Get week day: 1 sunday 2 monday 3 tuesday 4 wednesday ... 7 saturday
   df$Tarif <- ifelse((hour(df$DateTime) >= 8 & hour(df$DateTime) < 20) & (wday(df$DateTime) > 1 & wday(df$DateTime) < 7) & !isGermanHoliday(df$DateTime), "HT", "NT")
 
-  if(getOption("logging")) print(paste("[INFO]: addTarif - DONE"))
+  if(getOption("logging")) loginfo("addTarif - DONE")
 
   return(df)
 }
@@ -758,13 +762,12 @@ addTarif <- function(df) {
 #' @export
 #'
 addDirection <- function(df) {
-
-  if(getOption("logging")) print(paste("[INFO]: Called addDirection"))
+  library(logging)
 
   # Add a Directions column for later use. Being able to group
   df$Direction <- as.factor(ifelse(df$avg_1min_MW < 0, "NEG", "POS"))
 
-  if(getOption("logging")) print(paste("[INFO]: addDirection - DONE"))
+  if(getOption("logging")) loginfo("addDirection - DONE")
 
   return(df)
 }
@@ -783,10 +786,9 @@ addDirection <- function(df) {
 #' @export
 #'
 preprocessOperatingReserveAuctions <- function(df.auctions) {
+  library(logging)
 
-  if(getOption("logging")) print(paste("[INFO]: Called preprocessOperatingReserveAuctions"))
-
-  if(getOption("logging")) print(paste("[INFO]: preprocessOperatingReserveAuctions - Adding Tarif and Direction variables"))
+  if(getOption("logging")) loginfo("preprocessOperatingReserveAuctions - Adding Tarif and Direction variables")
   df.auctions$Tarif <- rapply(strsplit(as.character(df.auctions$product_name), "_"), function(x) x[2])
   df.auctions$Direction <- rapply(strsplit(as.character(df.auctions$product_name), "_"), function(x) x[1])
 
@@ -799,7 +801,7 @@ preprocessOperatingReserveAuctions <- function(df.auctions) {
 
   return(df.auctions[ , !(names(df.auctions) %in% drops)])
 
-  if(getOption("logging")) print(paste("[INFO]: preprocessOperatingReserveAuctions - DONE"))
+  if(getOption("logging")) loginfo("preprocessOperatingReserveAuctions - DONE")
 
 }
 
@@ -827,15 +829,13 @@ preprocessOperatingReserveAuctions <- function(df.auctions) {
 #' @export
 #'
 approximateCallsInRecursion <- function(df.needs, df.calls) {
-
+  #library(logging)
   library(dplyr)
-
-  if(getOption("logging")) print(paste("[INFO]: Called approximateCallsInRecursion"))
 
   # Calculate the 1min average operating reserve needs out of the 4sec data
   df.needs.1min <- aggregateXminAVGMW(df.needs, 1)
 
-  if(getOption("logging")) print(paste("[INFO]: approximateCallsInRecursion - Cut the 15min sections"))
+  if(getOption("logging")) loginfo("approximateCallsInRecursion - Cut the 15min sections")
 
   # Join with 15min calls
   # Cut 1min avg needs into 15min for join operation
@@ -849,7 +849,7 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
   t.all <- formatForApproximationAndParallelComp(t.all)
 
 
-  if(getOption("logging")) print(paste("[INFO]: approximateCallsInRecursion - Split the 15min sections"))
+  if(getOption("logging")) loginfo("approximateCallsInRecursion - Split the 15min sections")
 
   # split the data.frame on the cuttedTime variable 15min sections
   # creates a list
@@ -859,13 +859,11 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
   # Init progress bar
   if(getOption("logging")) pb <- txtProgressBar(min = 0, max = length(path), style = 3)
 
-
-
   # Do in parallel
   # For every 15min section do the recursion to correct the 1min avg needs
   for(i in 1:length(path)) {
 
-    if(getOption("logging")) print(paste("[INFO]: approximateCallsInRecursion - Start recursion for section: ", names(path[i])))
+    if(getOption("logging")) loginfo(paste("approximateCallsInRecursion - Start recursion for section: ", reformatDateTime(min(path[[i]]$DateTime)), " till ", reformatDateTime(max(path[[i]]$DateTime))))
 
     # ----------- Here starts the recursion ------------------- #
     # Do and repeat the recursion of counting NEG nad POS, correcting for homogenity, calculating the 15min NEG and POS avg of the needs, correct the needs
@@ -877,19 +875,14 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
   }
 
 
-
-
-
   # CLose the progress bar
   if(getOption("logging")) close(pb)
 
   # Reformat DateTime and cuttedTime
-  res$DateTime <- as.POSIXct(res$DateTime, "%Y-%m-%d %H:%M:%S", origin = "1970-01-01")
-  res$cuttedTime <- as.POSIXct(res$cuttedTime, "%Y-%m-%d %H:%M:%S", origin = "1970-01-01")
-  attr(res$DateTime, "tzone") <- "Europe/Berlin"
-  attr(res$cuttedTime, "tzone") <- "Europe/Berlin"
+  res$DateTime <- reformatDateTime(res$DateTime)
+  res$cuttedTime <- reformatDateTime(res$cuttedTime)
 
-  if(getOption("logging")) print(paste("[INFO]: approximateCallsInRecursion - DONE"))
+  if(getOption("logging")) loginfo("approximateCallsInRecursion - DONE")
 
   return(res)
 
@@ -898,17 +891,15 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
 
 
 parallelCompWrapperForApproximation <- function(df.needs, df.calls, numCores) {
-
+  library(logging)
   library(dplyr)
   library(foreach)
   library(doParallel)
 
-  if(getOption("logging")) print(paste("[INFO]: Called approximateCallsInRecursion"))
-
   # Calculate the 1min average operating reserve needs out of the 4sec data
   df.needs.1min <- aggregateXminAVGMW(df.needs, 1)
 
-  if(getOption("logging")) print(paste("[INFO]: approximateCallsInRecursion - Cut the 15min sections"))
+  if(getOption("logging")) loginfo("approximateCallsInRecursion - Cut the 15min sections")
 
   # Join with 15min calls
   # Cut 1min avg needs into 15min for join operation
@@ -922,7 +913,7 @@ parallelCompWrapperForApproximation <- function(df.needs, df.calls, numCores) {
   t.all <- formatForApproximationAndParallelComp(t.all)
 
 
-  if(getOption("logging")) print(paste("[INFO]: approximateCallsInRecursion - Split the 15min sections"))
+  if(getOption("logging")) loginfo("approximateCallsInRecursion - Split the 15min sections")
 
   # split the data.frame on the cuttedTime variable 15min sections
   # creates a list
@@ -959,7 +950,7 @@ parallelCompWrapperForApproximation <- function(df.needs, df.calls, numCores) {
   attr(res$DateTime, "tzone") <- "Europe/Berlin"
   attr(res$cuttedTime, "tzone") <- "Europe/Berlin"
 
-  if(getOption("logging")) print(paste("[INFO]: approximateCallsInRecursion - DONE"))
+  if(getOption("logging")) loginfo("approximateCallsInRecursion - DONE")
 
   return(res)
 
@@ -973,7 +964,12 @@ formatForApproximationAndParallelComp <- function(df) {
   return(df)
 }
 
-
+# Inut DateTime is a numeric value, target format is "%Y-%m-%d %H:%M:%S" in timezone Berlin
+reformatDateTime <- function(dateTime) {
+  dt <- as.POSIXct(dateTime, "%Y-%m-%d %H:%M:%S", origin = "1970-01-01")
+  attr(dt, "tzone") <- "Europe/Berlin"
+  dt
+}
 
 
 #' @title calcMarginalWorkPrices
@@ -1002,10 +998,8 @@ formatForApproximationAndParallelComp <- function(df) {
 #' @export
 #'
 calcMarginalWorkPrices <- function(df, auctions) {
-
+  library(logging)
   library(dplyr)
-
-  if(getOption("logging")) print(paste("[INFO]: Called calcMarginalWorkPrices"))
 
   # Add the Tarif to the calls
   df <- addTarif(df)
@@ -1018,7 +1012,7 @@ calcMarginalWorkPrices <- function(df, auctions) {
   # Init progress bar
   if(getOption("logging")) pb <- txtProgressBar(min = 0, max = nrow(df), style = 3)
 
-  if(getOption("logging")) print(paste("[INFO]: calcMarginalWorkPrices - Starting to match every minute with auctions and calculate marginal price"))
+  if(getOption("logging")) loginfo("calcMarginalWorkPrices - Starting to match every minute with auctions and calculate marginal price")
 
   # for ever approx. 1min call match auction bids and compute the marginal work price
   for(i in 1:nrow(df)) {
@@ -1050,7 +1044,7 @@ calcMarginalWorkPrices <- function(df, auctions) {
   colnames(arraym) <- c("marginal_work_price")
   df <- cbind(df,arraym)
 
-  if(getOption("logging")) print(paste("[INFO]: calcMarginalWorkPrices - DONE"))
+  if(getOption("logging")) loginfo("[INFO]: calcMarginalWorkPrices - DONE")
 
 
   return(df)
@@ -1060,6 +1054,7 @@ calcMarginalWorkPrices <- function(df, auctions) {
 
 parallelCompWrapperForMarginalWorkPrices <- function(approximated.calls, auctions, numCores) {
 
+  if(getOption("logging")) loginfo("parallelCompWrapperForMarginalWorkPrices")
   # Add the Tarif to the calls
   approximated.calls <- addTarif(approximated.calls)
   # Add Direction NEG or POS to the calls
@@ -1090,6 +1085,9 @@ parallelCompWrapperForMarginalWorkPrices <- function(approximated.calls, auction
   colnames(mwp) <- "marginal_work_price"
 
   df <- cbind(approximated.calls, mwp)
+
+  if(getOption("logging")) loginfo("parallelCompWrapperForMarginalWorkPrices - DONE")
+
 
   return(df)
 }
@@ -1177,7 +1175,7 @@ formatAuctionsForParallelComp <- function(auctions) {
 #' @export
 #'
 getCallProbDataSet <- function(data, numCores, price.seq.start, price.seq.end, tarif, direction) {
-
+  library(logging)
   library(foreach)
   library(doParallel)
 
@@ -1204,7 +1202,6 @@ getCallProbDataSet <- function(data, numCores, price.seq.start, price.seq.end, t
 
 #' This is a helper method needed in the @seealso getCallProbDataSet function
 getCallProbForMarginalWorkPrice <- function(data, mwp, tarif, direction) {
-
   library(dplyr)
 
   # get the total amount of all marginal work prices which are less or equal the given price example and fit within the Tarif and Direction (product type)

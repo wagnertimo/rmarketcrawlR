@@ -35,10 +35,8 @@
 #' @export
 #'
 scrape_rl_calls <- function(date_from, date_to, uenb_type, rl_type) {
-
+  library(logging)
   library(httr)
-
-  if(getOption("logging")) print(paste("[INFO]: Called scrape_rl_calls"))
 
   url = 'https://www.regelleistung.net/ext/data/';
 
@@ -63,10 +61,8 @@ scrape_rl_calls <- function(date_from, date_to, uenb_type, rl_type) {
 #' @export
 #'
 preprocess_rl_calls <- function(response_content) {
-
+  library(logging)
   library(xml2)
-
-  if(getOption("logging")) print(paste("[INFO]: Called preprocess_rl_calls"))
 
   # Preprocess the response data
   #
@@ -89,10 +85,8 @@ preprocess_rl_calls <- function(response_content) {
 #' @export
 #'
 getDatesArrayOfMonths <- function(d1.start, d1.end) {
-
+  library(logging)
   library(lubridate)
-
-  if(getOption("logging")) print(paste("[INFO]: Called getDatesArrayOfMonths"))
 
   d1.start <- as.Date(d1.start, "%d.%m.%Y")
   d1.end <- as.Date(d1.end, "%d.%m.%Y")
@@ -167,10 +161,8 @@ nextMonthDate <- function(date){
 #
 
 scrape_rl_auctions <- function(date_from, productId) {
-
+  library(logging)
   library(httr)
-
-  if(getOption("logging")) print(paste("[INFO]: Called scrape_rl_auctions"))
 
   url = 'https://www.regelleistung.net/ext/tender/';
 
@@ -188,10 +180,8 @@ scrape_rl_auctions <- function(date_from, productId) {
 
 # Crawl the reults table of the auctions to get the auctionIds within the given timeframe. The results of the auction table contain all acutionIds from the given start date till the current date
 getAuctionIds <- function(response, date_from, date_to) {
-
+  library(logging)
   library(XML)
-
-  if(getOption("logging")) print(paste("[INFO]: Called getAuctionIds"))
 
   # Calculate the time difference in weeks of the given start and end date. This value sets the needed amount of auctionIds from the response since they are weekly auctions
   tdiff <- floor(as.double(difftime(as.Date(date_to, format = "%d.%m.%Y") ,as.Date(date_from, format = "%d.%m.%Y") , units = c("weeks")))) + 1
@@ -220,10 +210,10 @@ getAuctionIds <- function(response, date_from, date_to) {
 
 
 callGETforAuctionResults <- function(auctionId) {
-
+  library(logging)
   library(httr)
 
-  if(getOption("logging")) print(paste("[INFO]: callGETforAuctionResults - Called for ", auctionId))
+  if(getOption("logging")) loginfo(paste("callGETforAuctionResults - Called for ", auctionId))
 
   url = paste('https://www.regelleistung.net/ext/tender/results/anonymousdownload/',auctionId, sep = "");
 
@@ -250,7 +240,7 @@ callGETforAuctionResults <- function(auctionId) {
 #' @export
 #'
 build_df_rl_calls_auctions <- function(response_content, case, fileName) {
-
+  library(logging)
   # Write a temporary csv file out of the preprocessed response data.
   # This whole approach with the temp.csv file allows to process bigger files.
   #
@@ -260,7 +250,7 @@ build_df_rl_calls_auctions <- function(response_content, case, fileName) {
   # This if statement builds the data.frame for the operating reserve calls
   if(case == "calls") {
 
-    if(getOption("logging")) print(paste("[INFO]: build_rl_calls_auctions - Called for Reserve Calls. Read in file"))
+    if(getOption("logging")) loginfo("build_rl_calls_auctions - Called for Reserve Calls. Read in file")
 
     # Read in the temporary csv file
     #
@@ -285,7 +275,7 @@ build_df_rl_calls_auctions <- function(response_content, case, fileName) {
   # This if statement builds the data.frame for the operating reserve auctions
   else if(case == "auctions") {
 
-    if(getOption("logging")) print(paste("[INFO]: build_rl_calls_auctions - Called for Reserve Auctions. Read in file"))
+    if(getOption("logging")) loginfo("build_rl_calls_auctions - Called for Reserve Auctions. Read in file")
 
     df <- read.csv(file = fileName,
                    header = TRUE,
@@ -347,8 +337,8 @@ formatGermanNumber <- function(x){
 # TODO improve this function --> causes arbitrary errors while writing and reading in the temp csv file
 #
 scrape_rl_need_month <- function(date_code) {
-
-  if(getOption("logging")) print(paste("[INFO]: scrape_rl_need_month - Scrape data for ", date_code))
+  library(logging)
+  if(getOption("logging")) loginfo(paste("scrape_rl_need_month - Scrape data for ", date_code))
 
   # Create a temporary file to store the downloaded zip file in it
   tempFileName <- paste("needs_", date_code, sep = "")
@@ -356,11 +346,11 @@ scrape_rl_need_month <- function(date_code) {
     temp <- tempfile(tempFileName, "./")
   url = paste('https://www.transnetbw.de/files/bis/srlbedarf/', date_code, '_SRL_Bedarf.zip', sep = "");
 
-  if(getOption("logging")) print(paste("[INFO]: scrape_rl_need_month - Download data for ", date_code))
+  if(getOption("logging")) loginfo(paste("scrape_rl_need_month - Download data for ", date_code))
 
   download.file(url, temp)
 
-  if(getOption("logging"))print(paste("[INFO]: scrape_rl_need_month - Read csv for ", date_code))
+  if(getOption("logging")) loginfo(paste("scrape_rl_need_month - Read csv for ", date_code))
 
   # Unzip in read in the csv file into a data.frame
   #
@@ -383,11 +373,11 @@ scrape_rl_need_month <- function(date_code) {
   csvf <- list.files("./")[endsWith(list.files("./"), ".csv")]
 
   # Read in the unzipped csv file
-  if(getOption("logging")) print(paste("[INFO]: scrape_rl_need_month - Read in csv file for ", date_code))
+  if(getOption("logging")) loginfo(paste("scrape_rl_need_month - Read in csv file for ", date_code))
   dft <-  read.csv(csvf, header = FALSE, sep = ",", dec = ".")
 
   # delete the csv file
-  if(getOption("logging")) print(paste("[INFO]: scrape_rl_need_month - Delete csv file for ", date_code))
+  if(getOption("logging")) loginfo(paste("scrape_rl_need_month - Delete csv file for ", date_code))
   file.remove(csvf)
 
   # Since there are no headers, include appropriate header names
@@ -412,8 +402,7 @@ preceedingZerosForMonths <- function(month) {
 
 # This function builds up an array containing all the date codes needed to build the whole data.frame.
 getDateCodesArray <- function(date_from, date_to) {
-
-  if(getOption("logging")) print(paste("[INFO]: getDateCodesArray"))
+  library(logging)
 
   # Init
   dateCodes <- c()
@@ -424,14 +413,14 @@ getDateCodesArray <- function(date_from, date_to) {
   date_month <- strsplit(date_from, "\\.")[[1]][2]
   date_year <- strsplit(date_from, "\\.")[[1]][3]
 
-  if(getOption("logging")) print(paste("[INFO]: getDateCodesArray - Building the dateCodes in while loop"))
+  if(getOption("logging")) loginfo("getDateCodesArray - Building the dateCodes in while loop")
 
   # Fill the dateCodes array by counting up the number of months (and year if there is a year change) since the end date (date_to_code) is reached
   repeat{
     # Build up the date code
     dateCode <- paste(date_year, date_month, sep = "")
 
-    if(getOption("logging")) print(paste("[INFO]: Building the dateCode ", dateCode))
+    if(getOption("logging")) logdebug("[DEBUG]: Building the dateCode ", dateCode)
 
     # Append it to the result array
     dateCodes <- c(dateCodes, dateCode)
@@ -454,8 +443,8 @@ getDateCodesArray <- function(date_from, date_to) {
 
 # This method uses all the date codes within the specified time period to merge the individual data.frames together
 buildDataFrameForDateCodes <- function(dateCodes) {
-
-  if(getOption("logging")) print(paste("[INFO]: buildDataFrameForDateCodes - Looping through dateCodes to scrape data"))
+  library(logging)
+  if(getOption("logging")) loginfo("buildDataFrameForDateCodes - Looping through dateCodes to scrape data")
 
   # Init progress bar
   if(getOption("logging")) pb <- txtProgressBar(min = 0, max = length(dateCodes), style = 3)
@@ -500,17 +489,15 @@ buildDataFrameForDateCodes <- function(dateCodes) {
 #' @export
 #'
 mergeCSVFilesOfNeeds <- function(year) {
-
+  library(logging)
   library(lubridate)
-
-  if(getOption("logging")) print(paste("[INFO]: Called mergeCSVFilesOfNeeds"))
 
   # inint the merging data.frame
   df <- data.frame()
 
   for(month in 1:12){
 
-    if(getOption("logging")) print(paste("[INFO]: mergeCSVFilesOfNeeds - Merging for ", month, " ", year))
+    if(getOption("logging")) loginfo(paste("mergeCSVFilesOfNeeds - Merging for ", month, " ", year))
 
     # define the path where the file can be found
     path <-  paste("data/needs/", year, preceedingZerosForMonths(month), "_SRL_Bedarf.csv", sep = "")
@@ -525,7 +512,7 @@ mergeCSVFilesOfNeeds <- function(year) {
   # format the Date variable
   df$Date <- as.Date(df$Date, format = "%Y/%m/%d")
 
-  if(getOption("logging")) print(paste("[INFO]: mergeCSVFilesOfNeeds - DONE"))
+  if(getOption("logging")) loginfo("mergeCSVFilesOfNeeds - DONE")
 
   return(df)
 }
@@ -556,15 +543,14 @@ mergeCSVFilesOfNeeds <- function(year) {
 #' @export
 #'
 getOperatingReserveAuctions <- function(date_from, date_to, productId) {
-
-  if(getOption("logging")) print(paste("[INFO]: Called getOperatingReserveAuctions"))
+  library(logging)
 
   # Retrieve all auctions (scrape the auction table) since the the given start date
   auctionsResponse <- scrape_rl_auctions(date_from, productId)
   # Extract the auctionIds from the scraped auction table to retrieve the actual auction data
   auctionIds <- getAuctionIds(auctionsResponse, date_from, date_to)
 
-  if(getOption("logging")) print(paste("[INFO]: getOperatingReserveAuctions - GET request and build of auctions"))
+  if(getOption("logging")) loginfo("getOperatingReserveAuctions - GET request and build of auctions")
 
   # Init progress bar // CAUTION --> the length of auctionIds can be longer than needed (retrieves all auctionIds but stops at the input end date)
   if(getOption("logging")) pb <- txtProgressBar(min = 0, max = length(auctionIds), style = 3)
@@ -605,7 +591,7 @@ getOperatingReserveAuctions <- function(date_from, date_to, productId) {
   # Delete All temporary files in the data/auctions directory
   #invisible(do.call(file.remove, list(list.files("data/auctions", full.names = TRUE))))
 
-  if(getOption("logging")) print(paste("[INFO]: getOperatingReserveAuctions - DONE"))
+  if(getOption("logging")) loginfo("getOperatingReserveAuctions - DONE")
 
   return(df_auctions)
 
@@ -632,8 +618,7 @@ getOperatingReserveAuctions <- function(date_from, date_to, productId) {
 #' @export
 #'
 getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
-
-  if(getOption("logging")) print(paste("[INFO]: Called getOperatingReserveCalls"))
+  library(logging)
 
   # First split the input timeframe into processable monthly dates
   # Then loop through the monthly timeframes and process like before.
@@ -646,7 +631,7 @@ getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
 
   for(e in 1:nrow(dates)) {
 
-    if(getOption("logging")) print(paste("[INFO] getOperatinReserveCalls - POST request for timeframe: ", dates[e,1], " - ", dates[e,2], sep = ""))
+    if(getOption("logging")) loginfo(paste("getOperatinReserveCalls - POST request for timeframe: ", dates[e,1], " - ", dates[e,2], sep = ""))
 
     # Do the POST request and retrieve the response from the server
     r <- scrape_rl_calls(dates[e,1], dates[e,2], uenb_type, rl_type)
@@ -671,7 +656,7 @@ getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
   # Delete All temporary files in the data/calls directory
   #invisible(do.call(file.remove, list(list.files("data/calls", full.names = TRUE))))
 
-  if(getOption("logging")) print(paste("[INFO]: getOperatingReserveCalls - DONE"))
+  if(getOption("logging")) loginfo("getOperatingReserveCalls - DONE")
 
   return(df)
 }
@@ -693,8 +678,7 @@ getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
 #' @export
 #'
 getOperatingReserveNeeds <- function(startDate, endDate) {
-
-  if(getOption("logging")) print(paste("[INFO]: Called getOperatingReserveNeeds"))
+  library(logging)
 
   # Extract all the dataCodes to build the whole data.frame by downloading the zip file
   df <- buildDataFrameForDateCodes(getDateCodesArray(startDate, endDate))
@@ -702,12 +686,12 @@ getOperatingReserveNeeds <- function(startDate, endDate) {
   # Delete All temporary files in the data/calls directory
   #invisible(do.call(file.remove, list(list.files("data/needs", full.names = TRUE))))
 
-  if(getOption("logging")) print(paste("[INFO]: getOperatingReserveNeeds - Subset the data.frame"))
+  if(getOption("logging")) loginfo("getOperatingReserveNeeds - Subset the data.frame")
 
   # Subset the whole data.frame to the given time period
   df <- subset(df, Date >= as.Date(startDate, format = "%d.%m.%Y") & Date <= as.Date(endDate, format = "%d.%m.%Y"))
 
-  if(getOption("logging")) print(paste("[INFO]: getOperatingReserveNeeds - DONE"))
+  if(getOption("logging")) loginfo("getOperatingReserveNeeds - DONE")
 
 
   return(df)
