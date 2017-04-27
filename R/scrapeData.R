@@ -420,7 +420,7 @@ getDateCodesArray <- function(date_from, date_to) {
     # Build up the date code
     dateCode <- paste(date_year, date_month, sep = "")
 
-    if(getOption("logging")) logdebug("[DEBUG]: Building the dateCode ", dateCode)
+    if(getOption("logging")) logdebug(paste("Building the dateCode ", dateCode))
 
     # Append it to the result array
     dateCodes <- c(dateCodes, dateCode)

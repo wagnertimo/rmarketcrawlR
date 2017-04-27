@@ -1,0 +1,80 @@
+2017-04-27 14:46:02 INFO::preprocessOperatingReserveNeeds - Changing factor variable Time to character
+2017-04-27 14:46:02 INFO::buildDataFrameForDateCodes - Looping through dateCodes to scrape data
+2017-04-27 14:46:02 INFO::getDateCodesArray - Building the dateCodes in while loop
+2017-04-27 14:46:02 DEBUG::[DEBUG]: Building the dateCode
+2017-04-27 14:46:02 DEBUG::[DEBUG]: Building the dateCode
+2017-04-27 14:46:02 DEBUG::[DEBUG]: Building the dateCode
+2017-04-27 14:46:02 DEBUG::[DEBUG]: Building the dateCode
+2017-04-27 14:46:02 DEBUG::[DEBUG]: Building the dateCode
+2017-04-27 14:46:02 DEBUG::[DEBUG]: Building the dateCode
+2017-04-27 14:46:02 DEBUG::[DEBUG]: Building the dateCode
+2017-04-27 14:46:02 DEBUG::[DEBUG]: Building the dateCode
+2017-04-27 14:46:02 DEBUG::[DEBUG]: Building the dateCode
+2017-04-27 14:46:02 DEBUG::[DEBUG]: Building the dateCode
+2017-04-27 14:46:02 DEBUG::[DEBUG]: Building the dateCode
+2017-04-27 14:46:02 DEBUG::[DEBUG]: Building the dateCode
+2017-04-27 14:46:02 INFO::scrape_rl_need_month - Scrape data for  201601
+2017-04-27 14:46:02 INFO::scrape_rl_need_month - Download data for  201601
+2017-04-27 14:46:09 INFO::scrape_rl_need_month - Read csv for  201601
+2017-04-27 14:46:10 INFO::scrape_rl_need_month - Read in csv file for  201601
+2017-04-27 14:46:13 INFO::scrape_rl_need_month - Delete csv file for  201601
+2017-04-27 14:46:14 INFO::scrape_rl_need_month - Scrape data for  201602
+2017-04-27 14:46:14 INFO::scrape_rl_need_month - Download data for  201602
+2017-04-27 14:46:21 INFO::scrape_rl_need_month - Read csv for  201602
+2017-04-27 14:46:21 INFO::scrape_rl_need_month - Read in csv file for  201602
+2017-04-27 14:46:25 INFO::scrape_rl_need_month - Delete csv file for  201602
+2017-04-27 14:46:26 INFO::scrape_rl_need_month - Scrape data for  201603
+2017-04-27 14:46:26 INFO::scrape_rl_need_month - Download data for  201603
+2017-04-27 14:46:33 INFO::scrape_rl_need_month - Read csv for  201603
+2017-04-27 14:46:34 INFO::scrape_rl_need_month - Read in csv file for  201603
+2017-04-27 14:46:37 INFO::scrape_rl_need_month - Delete csv file for  201603
+2017-04-27 14:46:39 INFO::scrape_rl_need_month - Scrape data for  201604
+2017-04-27 14:46:39 INFO::scrape_rl_need_month - Download data for  201604
+2017-04-27 14:46:46 INFO::scrape_rl_need_month - Read csv for  201604
+2017-04-27 14:46:46 INFO::scrape_rl_need_month - Read in csv file for  201604
+2017-04-27 14:46:50 INFO::scrape_rl_need_month - Delete csv file for  201604
+2017-04-27 14:46:52 INFO::scrape_rl_need_month - Scrape data for  201605
+2017-04-27 14:46:52 INFO::scrape_rl_need_month - Download data for  201605
+2017-04-27 14:47:00 INFO::scrape_rl_need_month - Read csv for  201605
+2017-04-27 14:47:00 INFO::scrape_rl_need_month - Read in csv file for  201605
+2017-04-27 14:47:05 INFO::scrape_rl_need_month - Delete csv file for  201605
+2017-04-27 14:47:07 INFO::scrape_rl_need_month - Scrape data for  201606
+2017-04-27 14:47:07 INFO::scrape_rl_need_month - Download data for  201606
+2017-04-27 14:47:15 INFO::scrape_rl_need_month - Read csv for  201606
+2017-04-27 14:47:15 INFO::scrape_rl_need_month - Read in csv file for  201606
+2017-04-27 14:47:18 INFO::scrape_rl_need_month - Delete csv file for  201606
+2017-04-27 14:47:21 INFO::scrape_rl_need_month - Scrape data for  201607
+2017-04-27 14:47:21 INFO::scrape_rl_need_month - Download data for  201607
+2017-04-27 14:47:29 INFO::scrape_rl_need_month - Read csv for  201607
+2017-04-27 14:47:29 INFO::scrape_rl_need_month - Read in csv file for  201607
+2017-04-27 14:47:33 INFO::scrape_rl_need_month - Delete csv file for  201607
+2017-04-27 14:47:36 INFO::scrape_rl_need_month - Scrape data for  201608
+2017-04-27 14:47:36 INFO::scrape_rl_need_month - Download data for  201608
+2017-04-27 14:47:44 INFO::scrape_rl_need_month - Read csv for  201608
+2017-04-27 14:47:44 INFO::scrape_rl_need_month - Read in csv file for  201608
+2017-04-27 14:47:48 INFO::scrape_rl_need_month - Delete csv file for  201608
+2017-04-27 14:47:51 INFO::scrape_rl_need_month - Scrape data for  201609
+2017-04-27 14:47:51 INFO::scrape_rl_need_month - Download data for  201609
+2017-04-27 14:47:58 INFO::scrape_rl_need_month - Read csv for  201609
+2017-04-27 14:47:59 INFO::scrape_rl_need_month - Read in csv file for  201609
+2017-04-27 14:48:02 INFO::scrape_rl_need_month - Delete csv file for  201609
+2017-04-27 14:48:05 INFO::scrape_rl_need_month - Scrape data for  201610
+2017-04-27 14:48:05 INFO::scrape_rl_need_month - Download data for  201610
+2017-04-27 14:48:13 INFO::scrape_rl_need_month - Read csv for  201610
+2017-04-27 14:48:13 INFO::scrape_rl_need_month - Read in csv file for  201610
+2017-04-27 14:48:17 INFO::scrape_rl_need_month - Delete csv file for  201610
+2017-04-27 14:48:20 INFO::scrape_rl_need_month - Scrape data for  201611
+2017-04-27 14:48:20 INFO::scrape_rl_need_month - Download data for  201611
+2017-04-27 14:48:27 INFO::scrape_rl_need_month - Read csv for  201611
+2017-04-27 14:48:27 INFO::scrape_rl_need_month - Read in csv file for  201611
+2017-04-27 14:48:31 INFO::scrape_rl_need_month - Delete csv file for  201611
+2017-04-27 14:48:35 INFO::scrape_rl_need_month - Scrape data for  201612
+2017-04-27 14:48:35 INFO::scrape_rl_need_month - Download data for  201612
+2017-04-27 14:48:42 INFO::scrape_rl_need_month - Read csv for  201612
+2017-04-27 14:48:43 INFO::scrape_rl_need_month - Read in csv file for  201612
+2017-04-27 14:48:46 INFO::scrape_rl_need_month - Delete csv file for  201612
+2017-04-27 14:48:54 INFO::getOperatingReserveNeeds - Subset the data.frame
+2017-04-27 14:48:56 INFO::getOperatingReserveNeeds - DONE
+2017-04-27 14:48:56 INFO::preprocessOperatingReserveNeeds - Changing character string of daylight saving times
+2017-04-27 14:49:05 INFO::preprocessOperatingReserveNeeds - Formatting POSIXct datetime
+2017-04-27 14:54:26 INFO::preprocessOperatingReserveNeeds - DONE
