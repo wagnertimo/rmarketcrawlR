@@ -48,13 +48,13 @@ There are three main functions which allows you to crawl operating reserve calls
 
 * `getReserveNeeds(startDate, endDate)`: It retrieves the operating reserve needs for a specific time frame of the Netzregelverbund (NRV) based on a 4 sec resolution (source: https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/regelenergie-bedarf-und-abruf). The data gets formatted. Checkout documentation for further information.
 
-Below you will find an example code snippet to get started. It is shown how to crawl the operating reserve power data. It should be mentioned that you have to take care of the time period for the auctions data. The data is weekly based from monday till sunday. So when you want to do operations with it in combination with needs and/or calls, the time periods have to overlap. It is also important that you set the logging state in the begining. Till now there is no default value for it. Forgetting to set the log status will break all functions.
+Below you will find an example code snippet to get started. It is shown how to crawl the operating reserve power data. It should be mentioned that you have to take care of the time period for the auctions data. The data is weekly based from monday till sunday. So when you want to do operations with it in combination with needs and/or calls, the time periods have to overlap. It is also important that you set the logging state in the begining. Till now there is no default value for it. Forgetting to set the log status will break all functions. Every main function (like the get... functions) trigger a log file to be written in the workspace directory (with execution time in its name).
 
 ```r
 # Activate the package in the workspace
 library(rmarketcrawlR)
 
-# You have to set logging to TRUE or FALSE if you want logs printed out (Good for Debugging)
+# You have to set logging to TRUE or FALSE if you want logs printed out and written in a file (Good for Debugging)
 # No default yet. Will break if not set.
 setLogging(TRUE)
 
