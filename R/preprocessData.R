@@ -770,8 +770,9 @@ addTimezone <- function(df) {
 # 1 = sunday, 2 = monday, ... 7 = saturday // 1 = january, 2 = February, ... 12 = december
 lastDayOfMonth <- function(day, month, year){
   library(lubridate)
+  library(zoo)
 
-  lastDate = as.Date(as.yearmon(paste(year,"-",month,"-01",sep = "")), frac = 1)
+  lastDate = as.Date(zoo::as.yearmon(paste(year,"-",month,"-01",sep = "")), frac = 1)
   # 1 = sunday , 2 = monday ... 7 saturday
   lastWeekDay = wday(lastDate)
   diff = lastWeekDay - day
@@ -919,11 +920,15 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
   # one easy possible approach is to build a function which builds group counters for each 15min call and each 225 4sec needs (60*15/4)
   # And then merge by this tag
 
-  #t.all <- list(df.needs.1min, df.calls)
+  # Before merging, TZ needs to be set to a numeric value otherwise the order gets different in a change from CET to CEST (CEST is before CET)
+  # the numeric value of 0 or 1 is based on the first observation (weather the time series starts with CEST or CET)
+  df.needs.1min$TZ <- ifelse(df.needs.1min$TZ == df.needs.1min[1, "TZ"], 0, 1)
+  df.calls$TZ <- ifelse(df.calls$TZ == df.calls[1, "TZ"], 0, 1)
+
   t.all = merge(df.needs.1min, df.calls, by.x=c("TZ", "cuttedTime"), by.y=c("TZ", "DateTime"))
 
   # reformat the data.frame for parallel computing --> DateTime and cuttedTime into numerical value!
-  t.all <- formatForApproximationAndParallelComp(t.all)
+  #t.all <- formatForApproximationAndParallelComp(t.all)
 
 
   if(getOption("logging")) loginfo("approximateCallsInRecursion - Split the 15min sections")
@@ -1041,9 +1046,6 @@ parallelCompWrapperForApproximation <- function(df.needs, df.calls, numCores) {
 
 formatForApproximationAndParallelComp <- function(df) {
 
-  # the numeric value of 0 or 1 is based on the first observation (weather the time series starts with CEST or CET)
-  value<- df[1, "TZ"]
-  df$TZ <- ifelse(df$TZ == value, 0, 1)
   df$DateTime <- as.numeric(df$DateTime)
   df$cuttedTime <- as.numeric(df$cuttedTime)
   return(df)

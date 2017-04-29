@@ -86,18 +86,23 @@ system.time(getMarginalWorkPrices(needs,calls,auctions,2))
 #'------------------------------------------------------------------------------------------------------
 setLogging(TRUE)
 
-ne <- getReserveNeeds("30.10.2016","30.10.2016")
+ne <- getReserveNeeds("27.03.2016","27.03.2016")
 ne2 <- getReserveNeeds("29.10.2016","29.10.2016")
+ne3 <- getReserveNeeds("30.10.2016","30.10.2016")
 
-ca <- getReserveCalls("30.10.2016","30.10.2016", '6', 'SRL')
+ca <- getReserveCalls("27.03.2016","27.03.2016", '6', 'SRL')
 ca2 <- getReserveCalls("29.10.2016","29.10.2016", '6', 'SRL')
+ca3 <- getReserveCalls("30.10.2016","30.10.2016", '6', 'SRL')
 
 a <- getReserveAuctions("24.10.2016","30.10.2016", 2)
+a2 <- getReserveAuctions("21.03.2016","27.03.2016", 2)
 
 e <- getOneMinuteCalls(ne, ca)
-e2 <- getOneMinuteCalls(ne2, ca2)
+e3 <- getOneMinuteCalls(ne3, ca3)
 
-m <- getMarginalWorkPrices(ne,ca,a,2)
+m <- getMarginalWorkPrices(ne,ca,a2,2)
+m3 <- getMarginalWorkPrices(ne3,ca3,a,2)
+m2 <- getMarginalWorkPrices(ne2,ca2,a,2)
 
 
 #'------------------------------------------------------------------------------------------------------
