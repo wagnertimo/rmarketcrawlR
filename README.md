@@ -90,18 +90,23 @@ marginal.prices.parallel = getMarginalWorkPrices(needs, calls, auctions, numCore
 
 #### Calculate the call probabilities
 
-Now that you have the data set with the 1min approximated calls and their respective marginal work price, you are able to compute call probabilities for different given work prices and product types (Tarif and Direction, e.g. `NT_NEG`) of the whole input data.frame. Therefore the function `getCallProbDataSet()` is implemented. It uses parallel computing, so it is necessary to specify the processors cores parameter `numCores`. The input data set has to have the `marginal_work_price` variable. You can subset the input data set in the forehand for varies time periods.
+Now that you have the data set with the 1min approximated calls and their respective marginal work prices, you are able to compute conditional call probabilities for different given work prices. The condition can be parameterized by an character array `c()`  with e.g. `Tarif` and `Direction`. Hereby, is the variable `Direction` mandatory, since the denominator (number of total observations) for the probability computation depends on `NEG` and `POS` calls. You can add extra columns/variables to the input data set (here `marginal.prices.parallel`) which can be used as conditional parameters. E.g. one can add a column `DateClass` which specifies if the observation is a work day or week end day. The function `getCallProbDataSet()` uses parallel computing, so it is necessary to specify the processors cores parameter `numCores`. The input data set has to have the `marginal_work_price` variable. 
 
 ```r
 # Use the crawled data from above. Logging is set to true.
 
-# Get the call probabilities for the whole data set of the product "NT_POS" and within the price range of 0 to 775 (this is the max marginal work price for that period). Use only one process core for the parallel computation.
-call.probs <- getCallProbDataSetOnConditions(mwork.parallel, 1, 0, 775, c("Tarif", "Direction"))
+# Get the conditional call probabilities for the whole data set by using just one processor core. The price range for the probabilities is from 0 to 775. The condition is on the variables Tarif and Direction. But you could add e.g. a DateClass column and condition additionally by e.g. Weekend or Workday
+call.probs <- getCallProbDataSetOnConditions(marginal.prices.parallel, 1, 0, 775, c("Tarif", "Direction"))
 
-# Plot the call probabilities. Therefore create an array with the price range for the x axis. On the y axis set the computed call.probs
+# Plot multiple variables (value) against one target variable (key). The target has to be omitted for the values (2:...)
 library(ggplot2)
-price.range = seq(0, ceiling(max.mwork))
-qplot(price.range, call.probs, geom="line")
+plot <- call.probs %>%
+        # Binds rowwise. Every following column gets bind under the last row. The key variabel (here Price) gets repeated
+        gather(key, value, 2:ncol(call.probs)) %>%
+        ggplot(aes(x=Price, y=value, colour=key)) +
+        geom_line()
+
+plot
 
 ```
 
