@@ -7,7 +7,13 @@
 scrape_rl_calls(date_from, date_to, uenb_type, rl_type)
 }
 \arguments{
-\item{rl_type}{}
+\item{date_from}{the start date w}
+
+\item{date_to}{the end date}
+
+\item{uenb_type}{the UENB (50Hz, ....)}
+
+\item{rl_type}{the operating reserve power type (e.g. SRL)}
 }
 \value{
 a text content of a POST response. It has to be formatted @seealso preprocess_rl_calls.

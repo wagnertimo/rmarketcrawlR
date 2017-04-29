@@ -24,10 +24,10 @@
 #'
 #' @description This function scrapes the reserve calls and returns the POST response in its raw format.
 #'
-#' @param date_from
-#' @param date_to
-#' @param uenb_type
-#' @param rl_type
+#' @param date_from the start date w
+#' @param date_to the end date
+#' @param uenb_type the UENB (50Hz, ....)
+#' @param rl_type the operating reserve power type (e.g. SRL)
 #'
 #' @return a text content of a POST response. It has to be formatted @seealso preprocess_rl_calls.
 #'
@@ -258,7 +258,7 @@ build_df_rl_calls_auctions <- function(response_content, case, fileName) {
     # Therefore the read in function uses the parameters:
     #     quote = "" (get rid of parenthesis)
     #     skip = 1 (to get rid off the extra line at the beginning)
-    df <- read.csv2(file = fileName, header = TRUE, sep = ";", dec = ",", na.strings = c("","-"), quote = "", skip = 1)
+    df <- read.csv2(file = fileName, header = TRUE, sep = ";", na.strings = c("","-"), quote = "", skip = 1)
 
     # Rename the first date column which has a cryptic name because of the "1",)
     colnames(df)[1] <- "DATUM"
@@ -268,8 +268,16 @@ build_df_rl_calls_auctions <- function(response_content, case, fileName) {
 
     df$DATUM <- as.Date(df$DATUM, "%d.%m.%Y")
     # Change the number style
-    df$BETR..NEG <- -as.numeric(formatGermanNumber(df$BETR..NEG))
-    df$BETR..POS <- as.numeric(formatGermanNumber(df$BETR..POS))
+    # Strange Bug !!! ---> Sometimes pos MW (29.10.2016) or neg MW (e.g. 25.10.2016) have point as decimal delimiter. But in downloaded csv file it is comma
+    # and the corresponding neg (pos) is like expected decimal delimiter with comma!!!
+    #
+    # 25.10.2016 at 17:45 --> value is german format 1.035,150 --> function ignores and can't make numeric --> function has to check if only point and no comma
+
+    # Format first the number values --> has to use apply because of the if statement (the strange bug --> @see formatGermanNumber())
+    df[,c("BETR..NEG","BETR..POS")] <- apply(df[,c("BETR..NEG","BETR..POS")], MARGIN=1:2, FUN=function(x2) formatGermanNumber(x2) )
+
+    df$BETR..NEG <- -as.numeric(df$BETR..NEG)
+    df$BETR..POS <- as.numeric(df$BETR..POS)
 
   }
   # This if statement builds the data.frame for the operating reserve auctions
@@ -312,10 +320,25 @@ build_df_rl_calls_auctions <- function(response_content, case, fileName) {
 # German number is defined: commas as decimal limiter and points as thounds seperator (e.g. 133.456.298,0433)
 # Classical number is defined: only a point as decimal delimitir (e.g. 133456298.0433)
 #
+#
+# Strange Bug !!! ---> Sometimes pos MW (29.10.2016) or neg MW (e.g. 25.10.2016) have point as decimal delimiter. But in downloaded csv file it is comma
+# and the corresponding neg (pos) is like expected decimal delimiter with comma!!!
+#
+# ---> so it is check if the value already has a point in the string. If not it will be formatted, if so it stays....
+# ----> CAUTION: possible bug --> if values also contain a point for 1000er seperation, like e.g. 10.000.567 for 10000.567 or 10.000,567!!!
+#
 formatGermanNumber <- function(x){
-  z <- gsub("[^0-9,.]", "", x)
-  z <- gsub("\\.", "", z)
-  gsub(",", ".", z)
+  # Only format if there is
+  # Just a comma like 123,456 or point and comma like 1.234,567
+  # It is assumed that those are the only possible formats
+  # Only BUG if there are two points like 1.123.456 than it stays --> Hopefully this wont happen --> otherwise NAs would be created
+  if((grepl("\\.", x) == FALSE & grepl(",", x) == TRUE) | (grepl(",", x) == TRUE & grepl("\\.", x) == TRUE)) {
+    z <- gsub("[^0-9,.]", "", x)
+    z <- gsub("\\.", "", z)
+    return(gsub(",", ".", z))
+  }
+  # If there is just a point (no comma) return that value
+  return(x)
 }
 
 

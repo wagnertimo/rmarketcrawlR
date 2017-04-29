@@ -2,10 +2,12 @@
 % Please edit documentation in R/preprocessData.R
 \name{getCallProbForMarginalWorkPrice}
 \alias{getCallProbForMarginalWorkPrice}
-\title{This is a helper method needed in the @seealso getCallProbDataSet function}
+\title{This is a helper method needed in the @seealso getCallProbDataSet function
+It retuns the call probability for a given price (mwp) based on the conditions}
 \usage{
-getCallProbForMarginalWorkPrice(data, mwp, tarif, direction)
+getCallProbForMarginalWorkPrice(data, mwp, conditionByColumns)
 }
 \description{
 This is a helper method needed in the @seealso getCallProbDataSet function
+It retuns the call probability for a given price (mwp) based on the conditions
 }

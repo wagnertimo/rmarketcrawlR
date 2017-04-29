@@ -171,6 +171,7 @@ getReserveAuctions <- function(startDate, endDate, rl) {
 #'
 #' @param needs - The preprocessed operating reserve needs (@seealso getReserveNeeds)
 #' @param calls - The preprocessed operating reserve calls (@seealso getReserveCalls)
+#' @param numCores - OPTIONAL PARAMETER --> PARALLEL COMPUNTING NOT YET FUNCTIONAL
 #'
 #' @return A complete data.frame with the corrected operating reserve needs to approximate the 1min calls (avg_1min_MW).
 #'
@@ -196,10 +197,12 @@ getOneMinuteCalls <- function(needs, calls, numCores) {
   if(missing(numCores)) {
     res <- approximateCallsInRecursion(needs, calls)
   } else {
+    # NOT YET FUNCTIONAL
     res <- parallelCompWrapperForApproximation(needs, calls, numCores)
   }
 
-  drops <- c("cuttedTime", "NEG", "POS", "product_name", "Homo_NEG", "Homo_POS", "avg_15min_MW_NEG", "avg_15min_MW_POS")
+  # Drop also time zone if used later anytime re-add it @seealso addTimezone in @seealso preprocessData.R scipt file
+  drops <- c("cuttedTime", "TZ", "NEG", "POS", "product_name", "Homo_NEG", "Homo_POS", "avg_15min_MW_NEG", "avg_15min_MW_POS")
 
   res <- res[ , !(names(res) %in% drops)]
 
@@ -253,7 +256,7 @@ getMarginalWorkPrices <- function(needs, calls, auctions, numCores) {
   }
 
 
-  drops <- c("cuttedTime", "NEG", "POS", "product_name", "Homo_NEG", "Homo_POS", "avg_15min_MW_NEG", "avg_15min_MW_POS")
+  drops <- c("cuttedTime", "TZ", "NEG", "POS", "product_name", "Homo_NEG", "Homo_POS", "avg_15min_MW_NEG", "avg_15min_MW_POS")
 
   df <- df[ , !(names(df) %in% drops)]
 

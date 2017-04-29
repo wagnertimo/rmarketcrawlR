@@ -10,8 +10,6 @@ get15minAVGOf1minAVG(dataframe, direction)
 \item{dataframe}{- the data.frame with operating reserve needs (already preprocessed) and cuttedTime variable 15min is passed in (save computation time!)}
 
 \item{direction}{- specifies the positive or negative operating reserve need}
-
-\item{xmin}{- the time window for which the average should be calculated (should be 15)}
 }
 \value{
 a data.frame with corresponding average values on the given time window ("cuttedTime")
@@ -22,6 +20,6 @@ This method takes a data.frame of 1 min average values of operating reserve need
 \examples{
 df.needs <- getOperatingReserveNeeds("30.12.2015", "30.12.2015")
 df.needs.preprocessed <- preprocessOperatingReserveNeeds(df.needs)
-df.avg.15min.neg <- getAVGXmin(df.needs.preprocessed, 15, "NEG")
+df.avg.15min.neg <- getAVGXmin(df.needs.preprocessed, "NEG")
 
 }

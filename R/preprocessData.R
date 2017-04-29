@@ -3,6 +3,8 @@
 #'
 #' @author Timo Wagner, \email{wagnertimo@gmx.de}
 #'
+#' @import data.table
+#'
 #' It contains main and helper functions to preprocess the data which has been scraped @references scrapeData
 #' Mainly it approximates the 15min operating reserve calls into a finer resolution of 1min to allow a more realistic represention than the average values.
 #'
@@ -20,8 +22,15 @@
 #'
 
 
+#' @title isGermanHoliday
 #'
-#' This helper method states if the given datetime (POSIXct object) is a german bank holiday. It is used in @seealso addTarif
+#' @description This method states if the given datetime (POSIXct object) is a german bank holiday. It is used e.g. in @seealso addTarif
+#'
+#' @param dateTime - A dateTime object
+#'
+#' @return a boolean value TRUE if the given dateTime is a german holiday or not (FALSE)
+#'
+#' @export
 #'
 isGermanHoliday <- function(dateTime) {
 
@@ -79,20 +88,23 @@ isGermanHoliday <- function(dateTime) {
 aggregateXminAVGMW <- function(df.needs, xmin) {
   library(logging)
 
+
   if(getOption("logging")) loginfo(paste("aggregateXminAVGMW - Cut time in ", xmin, "min"))
 
   # Cut the Date-Times into Minutes such that every 4sec observation belongs to a bigger group of minutes
   df.needs$cuttedTime <- cut(df.needs$DateTime, breaks = paste(xmin, "min", sep = " "))
-  df.needs$cuttedTime <- as.POSIXct(df.needs$cuttedTime, tz = "MET")
+  df.needs$cuttedTime <- as.POSIXct(df.needs$cuttedTime, tz = "Europe/Berlin")
 
   if(getOption("logging")) loginfo(paste("aggregateXminAVGMW - Calculate average of ",xmin,"min"))
 
   # Create a data.frame with the mean values of the required MW in operating reserve power for every minute based on the cutted time
-  df.needs.avg <- aggregate(x = df.needs$MW,
-                            by = list(df.needs$cuttedTime),
-                            FUN = mean)
+  library(data.table)
+  df.needs.avg <- setDT(df.needs)[, lapply(.SD, mean), by=.(cuttedTime, TZ), .SDcols = "MW"]
+  setDF(df.needs.avg)
+
+
   # Modify/format the new average data.frame
-  colnames(df.needs.avg) <- c("DateTime", paste("avg_", xmin, "min_MW", sep=""))
+  colnames(df.needs.avg) <- c("DateTime", "TZ", paste("avg_", xmin, "min_MW", sep=""))
 
   return(df.needs.avg)
 }
@@ -287,7 +299,7 @@ calcHomogenityCorrectness <- function(dataframe) {
   # h.special is empty if there is no homogenity case. In that case, return the input data.frame with $Homo_NEG = 0 and $Homo_POS = 0
   if(nrow(h.special) != 0) {
 
-    # Compute the absolute minimum of the special cases for every 15min section
+    # Compute the absolute minimum of the special case
     # function(x){ifelse(x < 0, max(x), min(x) )} --> does not really work --> x.1 .... x.15 variables created
     # Trying with the formula expression seems to work better
     h.min <- aggregate(avg_1min_MW ~ cuttedTime, h.special, function(x) x[which.min(abs(x))])
@@ -652,7 +664,9 @@ preProcessOperatingReserveCalls <- function(df.calls) {
   setnames(df.calls, "BETR..POS", "pos_MW")
   setnames(df.calls, "BETR..NEG", "neg_MW")
 
-  keeps <- c("DateTime", "neg_MW", "pos_MW")
+  df.calls <- addTimezone(df.calls)
+
+  keeps <- c("DateTime", "neg_MW", "pos_MW", "TZ")
   #keeps <- c("DateTime", "neg_MW", "pos_MW")
 
   if(getOption("logging")) loginfo("preProcessOperatingReserveCalls - DONE")
@@ -715,6 +729,8 @@ preprocessOperatingReserveNeeds <- function(df.needs) {
   if(getOption("logging")) loginfo("preprocessOperatingReserveNeeds - Formatting POSIXct datetime")
   df.needs$DateTime <- as.POSIXct(paste(df.needs$Date, df.needs$Time, sep=" "), tz = "Europe/Berlin")
 
+  df.needs <- addTimezone(df.needs)
+
   # Not sure when and if needed. This variable is redundant
   # df.needs$Direction <- ifelse(df.needs$MW < 0, "NEG", "POS")
 
@@ -725,6 +741,61 @@ preprocessOperatingReserveNeeds <- function(df.needs) {
   return(df.needs[ , !(names(df.needs) %in% drops)])
 
 }
+
+# This helper method is used in @seealso preprocessOperatingReserveNeeds and @seealso preprocessOperatingReserveCalls
+# It adds the column TZ to the in put data.frame which extracts the time zone (CEST or CET) out of the date
+# It also handles the special case of daylight savings such that the second 2am hour gets the time zone CET on the last sunday in october.
+addTimezone <- function(df) {
+  df$TZ <- format(df[, "DateTime"], format="%Z")
+
+  # Check if in df is the change of daylight saving
+  fr <- filter(df, DateTime >= as.POSIXct(paste(lastDayOfMonth(1,10,2016), "02:00:00", sep = "")) & DateTime < as.POSIXct(paste(lastDayOfMonth(1,10,2016), "03:00:00", sep = "")))
+
+  if (nrow(fr) > 0){
+    # get the rows where the two 2am hours of the daylight saving change in october lay
+    rows <- which(df$DateTime >= as.POSIXct(paste(lastDayOfMonth(1,10,2016), "02:00:00", sep = "")) & df$DateTime < as.POSIXct(paste(lastDayOfMonth(1,10,2016), "03:00:00", sep = "")))
+    # the first 4 are the "old" (CEST) and the last 4 are the new (CET) 2am hours for the 15min calls --> 4*15 = 60
+    # for needs it is the first 60 and last 60 because they are minutely --> so solve it with length of rows
+    end <- length(rows)/2 + 1
+    df[rows[1:length(rows)/2],]$TZ <- "CEST"
+    df[rows[end:length(rows)],]$TZ <- "CET"
+  }
+  df$TZ <- as.factor(df$TZ)
+
+  return(df)
+}
+
+# This function returns a Date object (YYYY-MM-DD) of the last given weekday and month
+# E.g. The Last sunday(day = 7) in october (month = 10) in 2016 (year = 2016) is 2016-10-30
+# 1 = sunday, 2 = monday, ... 7 = saturday // 1 = january, 2 = February, ... 12 = december
+lastDayOfMonth <- function(day, month, year){
+  library(lubridate)
+
+  lastDate = as.Date(as.yearmon(paste(year,"-",month,"-01",sep = "")), frac = 1)
+  # 1 = sunday , 2 = monday ... 7 saturday
+  lastWeekDay = wday(lastDate)
+  diff = lastWeekDay - day
+  if(diff == 0) {
+    return(lastDate)
+  }
+  else {
+    # e.g target sunday = 1 and lastWeekDay monday = 2 --> diff 2 - 1 = 1 --> shift lastDate back 1 (diff) day(s)
+    # e.g target sunday = 1 and lastWeekDay tuesday = 3 --> diff 3 - 1 = 2 --> shift lastDate back 2 (diff) day(s)
+    # e.g target wednesday = 4 and lastWeekDay tuesday = 3 --> diff 3 - 4 = -1 --> if negative --> 7 - diff = 6 --->shift lastDate back 6 (diff) day(s)
+    # e.g target tuesday = 3 and lastWeekDay monday = 2 --> diff 2 - 3 = -1 --> if negative --> 7 - diff = 6 --->shift lastDate back 6 (diff) day(s)
+    if(diff < 0) {
+      # shift lastDate back by 7 - diff
+      shiftback = 7  + diff
+    }
+    else {
+      # diff positive --> shift lastDate back by diff
+      shiftback = diff
+    }
+
+    return(lastDate - shiftback)
+  }
+}
+
 
 
 
@@ -829,7 +900,7 @@ preprocessOperatingReserveAuctions <- function(df.auctions) {
 #' @export
 #'
 approximateCallsInRecursion <- function(df.needs, df.calls) {
-  #library(logging)
+  library(logging)
   library(dplyr)
 
   # Calculate the 1min average operating reserve needs out of the 4sec data
@@ -840,10 +911,16 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
   # Join with 15min calls
   # Cut 1min avg needs into 15min for join operation
   df.needs.1min$cuttedTime <- cut(df.needs.1min$DateTime, breaks = paste("15", "min", sep = " "))
-  df.needs.1min$cuttedTime <- as.POSIXct(df.needs.1min$cuttedTime, tz = "MET")
+  df.needs.1min$cuttedTime <- as.POSIXct(df.needs.1min$cuttedTime, tz = "Europe/Berlin")
 
   # merge the 1min needs and 15min calls based on the cuttedTime
-  t.all <-  merge(df.needs.1min, df.calls, by.x = "cuttedTime", by.y = "DateTime")
+
+  # Error in daylight savings --> There are two 2o'clock hours --> so the neg(pos)_MW 15min call has instead of one value, two values!!!
+  # one easy possible approach is to build a function which builds group counters for each 15min call and each 225 4sec needs (60*15/4)
+  # And then merge by this tag
+
+  #t.all <- list(df.needs.1min, df.calls)
+  t.all = merge(df.needs.1min, df.calls, by.x=c("TZ", "cuttedTime"), by.y=c("TZ", "DateTime"))
 
   # reformat the data.frame for parallel computing --> DateTime and cuttedTime into numerical value!
   t.all <- formatForApproximationAndParallelComp(t.all)
@@ -851,9 +928,13 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
 
   if(getOption("logging")) loginfo("approximateCallsInRecursion - Split the 15min sections")
 
-  # split the data.frame on the cuttedTime variable 15min sections
+  # split the data.frame on the timezone and cuttedTime (2) variable into 15min sections
   # creates a list
-  path <-  split(t.all, t.all[,1])
+  p <-  split(t.all, t.all$TZ)
+  path <- list()
+  for(i in 1:length(p)){
+    path <-  append(split(p[[i]], p[[i]]$cuttedTime), path,0)
+  }
   # Init the merge data.frame
   res <- data.frame()
   # Init progress bar
@@ -890,6 +971,7 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
 
 
 
+# NOT FUNCTIONAL YET!!!
 parallelCompWrapperForApproximation <- function(df.needs, df.calls, numCores) {
   library(logging)
   library(dplyr)
@@ -959,6 +1041,9 @@ parallelCompWrapperForApproximation <- function(df.needs, df.calls, numCores) {
 
 formatForApproximationAndParallelComp <- function(df) {
 
+  # the numeric value of 0 or 1 is based on the first observation (weather the time series starts with CEST or CET)
+  value<- df[1, "TZ"]
+  df$TZ <- ifelse(df$TZ == value, 0, 1)
   df$DateTime <- as.numeric(df$DateTime)
   df$cuttedTime <- as.numeric(df$cuttedTime)
   return(df)
@@ -1144,17 +1229,16 @@ formatAuctionsForParallelComp <- function(auctions) {
 
 
 
-#' @title getCallProbDataSet
+#' @title getCallProbDataSetOnConditions
 #'
-#' @description This functions calculates for each price within a given price range the call probability specified on a time period and product type (Tarif and Direction).
-#' Be aware that undefined time periods and/or Tarifs and Directions can lead to and error/exception which is not handled. So be sure that the time period and Tarif and Direction is valid/exist within the given input data.frame.
+#' @description This functions calculates for each price within a given price range the call probability conditioned by specified columns of the input data.frame (e.g. Tarif and Direction). Hereby, the Direction variable is mandatory to correctly calculate the call probability.
+#' The conditioned variables have to be calculated before and must be factors or at least factorizable.
 #'
 #' @param data - the data.frame with the calculated marginal workprices from the approximated 1min calls (@seealso getMarginalWorkPrices)
 #' @param numCores - set the number of cores to be used for parallel computation
 #' @param price.seq.start - specifies the start price of a price range for which call probabilities should be calculated
 #' @param price.seq.end - specifies the end price of a price range for which call probabilities should be calculated
-#' @param tarif - name the Tarif ("HT" or "NT") for which call probabilities should be calculated. In combination with the Direction variable this specifies the product type.
-#' @param direction - name the Direction ("POS" or "NEG") for which call probabilities should be calculated. In combination with the Tarif variable this specifies the product type.
+#' @param conditionByColumns - an array of columns/variables of the input data.frame. They condition the porbability calculation. Therefore they have to be factors or at least factorizable. IMPORTANT: !! The variable Direction has to be in it, since for probability calculation the total number (numerator) depends on POS and NEG power (It makes sense to keep Tarif and Direction which define the product type)
 #'
 #' @return an array with all the call probabilities of the specified timeperiod and price range.
 #'
@@ -1164,7 +1248,7 @@ formatAuctionsForParallelComp <- function(auctions) {
 #' auctions <- getOperatingReserveAuctions('28.12.2015', '10.01.2016', '2')
 #'
 #' mwork.parallel <- getMarginalWorkPrices(needs,calls,auctions,2)
-#' call.probs <- getCallProbDataSet(mwork.parallel, 1, 0, 775, "2016-01-01 00:00:00", "2016-01-01 23:59:59", "NT", "POS")
+#' call.probs <- getCallProbDataSet(mwork.parallel, 1, 0, 775, "2016-01-01 00:00:00", "2016-01-01 23:59:59", c("NT", "POS"))
 #'
 #' # Plot the call probabilities. Therefore create an array with the price range
 #' library(ggplot2)
@@ -1174,7 +1258,7 @@ formatAuctionsForParallelComp <- function(auctions) {
 #'
 #' @export
 #'
-getCallProbDataSet <- function(data, numCores, price.seq.start, price.seq.end, tarif, direction) {
+getCallProbDataSetOnConditions <- function(data, numCores, price.seq.start, price.seq.end, conditionByColumns) {
   library(logging)
   library(foreach)
   library(doParallel)
@@ -1182,34 +1266,68 @@ getCallProbDataSet <- function(data, numCores, price.seq.start, price.seq.end, t
   cl <- makeCluster(numCores) #not to overload your computer
   registerDoParallel(cl)
 
+  if(getOption("logging")) loginfo("getCallProbDataSetOnConditions - Start foreach loop")
+
+
   # Calculate for each price within the given price range the call probability specified on a time period and product type (Tarif and Direction)
   df <- foreach(i = price.seq.start:ceiling(price.seq.end),
-                .combine = c,
+                .combine = rbind,
                 .export = c("getCallProbForMarginalWorkPrice"),
                 .packages = c("dplyr"),
                 .verbose=FALSE) %dopar% {
 
-                  temp <- getCallProbForMarginalWorkPrice(data, i, tarif, direction)
+                  temp <- getCallProbForMarginalWorkPrice(data, i, conditionByColumns)
                   temp
                 }
 
   #stop cluster
   stopCluster(cl)
 
+  if(getOption("logging")) loginfo("getCallProbDataSetOnConditions - DONE")
+
+
   return(df)
 }
 
 
 #' This is a helper method needed in the @seealso getCallProbDataSet function
-getCallProbForMarginalWorkPrice <- function(data, mwp, tarif, direction) {
+#' It retuns the call probability for a given price (mwp) based on the conditions
+getCallProbForMarginalWorkPrice <- function(data, mwp, conditionByColumns) {
   library(dplyr)
 
-  # get the total amount of all marginal work prices which are less or equal the given price example and fit within the Tarif and Direction (product type)
-  num.filtered.prices <- nrow(filter(data, data$marginal_work_price >= mwp & tarif == data$Tarif & direction == data$Direction))
-  # Compute the call probability for the given price, round by 2
-  prob <- round(num.filtered.prices/nrow(data), digits = 4)
+  # Get the number of work pries which are less than the given price and based on the conditioned subset
+  rs.price <- data %>%
+    filter(marginal_work_price >= mwp) %>%
+    group_by_(.dots = conditionByColumns) %>%
+    summarise(n = n())
 
-  return(prob)
+  # Get the total amount of observations based on the conditions (filter/subset) BUT for both NEG and POS directions
+  rs.total2 <- data %>%
+    group_by_(.dots = conditionByColumns[-which(conditionByColumns %in% "Direction")]) %>%
+    summarise(n = n())
+
+  # join the total numbers and the numbers of the whole condition together in the final result array res2
+  rs2 <- left_join(rs.price, rs.total2, by = conditionByColumns[-which(conditionByColumns %in% "Direction")], suffix = c(".price",".total"))
+  # add the price to which the call probability belongs to the result data.frame
+  rs2$Price <- mwp
+  # calculate the call probability
+  rs2$Prob <- round(rs2$n.price/rs2$n.total, digits = 4)
+
+  # Now build for every combination of the conditions a joint new variable (e.g. from Tarif,Direction and DateClass --> HT_POS_Workday variable/column)
+  # Direction varable is a factor --> convert it to a character for further operations
+  rs2$Direction <- as.character(rs2$Direction)
+
+  for(i in 1:nrow(rs2)) {
+    # concatenate the new Variable based on the combinations of the conditions
+    coln <- paste("Prob_", paste(rs2[i,conditionByColumns], collapse = "_"), sep = "")
+    # Add the new variable/column to the resulat data.frame with the corresponding probability
+    rs2[[coln]] <- rs2[i,]$Prob
+  }
+
+  # reformat the data.frame such that only the newly columns and one price row will be returned
+  rs2 <- unique(rs2[, !(names(rs2) %in% c(conditionByColumns, "n.price","n.total","Prob") )])
+
+  return(rs2)
 }
 
 

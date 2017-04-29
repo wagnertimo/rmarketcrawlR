@@ -49,6 +49,12 @@ setLogging(TRUE)
 #mwork <- getMarginalWorkPrices(needs.2016,calls.2016,auctions.2016)
 
 # 10 days (sample of 01.01.2016 - 10.01.2016) parallel for margin calc. with 2 cores --> exe time:  135sec = 2,25min --> ca. 90min
+
+# Old laptop with 2 cores execution time for 10 days (sample of 01.01.2016 - 10.01.2016)
+# --> first part: 1min call approximation => ca. 6mins --> for 365 days => ca. 4h
+# --> second part: marginal work price computation (parallel comp.) => ca. 1,5min for 365 days => ca. 1h
+# estimated total time for 2016 => ca. 5-6h
+
 mwork.parallel <- getMarginalWorkPrices(needs,calls,auctions,2)
 
 mwork <- getMarginalWorkPrices(needs,calls,auctions)
@@ -66,13 +72,32 @@ system.time(getMarginalWorkPrices(needs,calls,auctions,2))
 # time.taken <- end.time - start.time
 # time.taken
 
+
+#'------------------------------------------------------------------------------------------------------
 #
-# !!! CAUTION THere are -Inf marginal work prices e.g. at 2016-01-01 02:21:00
+# !!! CAUTION Infinity loop on 2016-10-30 --> daylight savings
 #
+#       DONE --> but also check the dst flag of POSIXct object maybe this also works --> http://stackoverflow.com/questions/13156836/character-posixct-conversion-in-r-causes-wrong-timezone-values-on-daylight-savin?noredirect=1&lq=1
+#
+#   ---> BUT NEW ERROR SEEN --> pos_MW in calls do not format correctly they miss the point as delimiter where a comma was
+#
+#   ----> DONE
+#
+#'------------------------------------------------------------------------------------------------------
+setLogging(TRUE)
 
+ne <- getReserveNeeds("30.10.2016","30.10.2016")
+ne2 <- getReserveNeeds("29.10.2016","29.10.2016")
 
+ca <- getReserveCalls("30.10.2016","30.10.2016", '6', 'SRL')
+ca2 <- getReserveCalls("29.10.2016","29.10.2016", '6', 'SRL')
 
+a <- getReserveAuctions("24.10.2016","30.10.2016", 2)
 
+e <- getOneMinuteCalls(ne, ca)
+e2 <- getOneMinuteCalls(ne2, ca2)
+
+m <- getMarginalWorkPrices(ne,ca,a,2)
 
 
 #'------------------------------------------------------------------------------------------------------
@@ -328,22 +353,90 @@ max.mwork <- max(mwork.parallel$marginal_work_price) # e.g. 774.6, 5999.97
 library(dplyr)
 library(lubridate)
 
-mwork.parallel$DateClass <- ifelse(wday(mwork.parallel$DateTime) == 7 | wday(mwork.parallel$DateTime) == 6, "Weekend", "Workday")
+mwork.parallel$DateClass <- ifelse(isWeekendOrHoliday(mwork.parallel$DateTime) == TRUE, "Weekend", "Workday")
 
-# week days 1 == monday ... 7 == sunday
-sund <- filter(mwork.parallel, wday(mwork.parallel$DateTime) == 7)
-satd <- filter(mwork.parallel, wday(DateTime) == 6)
 
+
+isWeekendOrHoliday <- function(dateTime) {
+  library(lubridate)
+  library(rmarketcrawlR)
+
+  # week days 2 == monday ... 1 == sunday
+  return(ifelse(wday(dateTime) == 7 | wday(dateTime) == 1 | isGermanHoliday(dateTime) == TRUE, TRUE, FALSE))
+}
+
+
+# Optimize getCallProbDataSet() function --> user can choose in array c() which columns of input data.frame should be used for the
+# conditioned calculation of the call probabilities. IMPORTANT: the columns/variables should be factors or at least factorizable!!!!!!
+# E.g: conditionen by Tarif, Direction and Weekend columns
+#       --> output will be: columns for each combination (--> NEG_POS_Weekend or HT_NEG_Workday) and rows are the respective call probability with the price
+#
 
 
 # get the probability vector of the min max sequence
-tr <- getCallProbDataSet(satd, 1, 0, 775, "NT", "NEG")
+tr <- getCallProbDataSetOnConditions(mwork.parallel, 1, 0, 775, conditionByColumns = c("Tarif", "Direction", "DateClass"))
 
 # save the min max sequence in a vector to plot it against the corresponding probabilities
 tr2 <- seq(0, 775)
 
 library(ggplot2)
+
 qplot(tr2,tr, geom="line")
+
+# Plot multiple variables (value) against one target variable (key). The target has to be omitted for the values (2:...)
+tt <- tr
+z <- tt %>%
+  # Binds rowwise. Every following column gets bind under the last row. The key variabel (here Price) gets repeated
+  gather(key, value, 2:ncol(tt)) %>%
+  ggplot(aes(x=Price, y=value, colour=key)) +
+  geom_line()
+
+
+
+
+data <- mwork.parallel
+mwp <- 775
+conditionByColumns <-  c("Tarif", "Direction", "DateClass")
+
+# Get the number of work pries which are less than the given price and based on the conditioned subset
+rs.price <- data %>%
+  filter(marginal_work_price >= mwp) %>%
+  group_by_(.dots = conditionByColumns) %>%
+  summarise(n = n())
+
+# Get the total amount of observations based on the conditions (filter/subset) BUT for both NEG and POS directions
+rs.total2 <- data %>%
+  group_by_(.dots = conditionByColumns[-which(conditionByColumns %in% "Direction")]) %>%
+  summarise(n = n())
+
+# join the total numbers and the numbers of the whole condition together in the final result array res2
+rs2 <- left_join(rs.price, rs.total2, by = conditionByColumns[-which(conditionByColumns %in% "Direction")], suffix = c(".price",".total"))
+# add the price to which the call probability belongs to the result data.frame
+rs2$Price <- mwp
+# calculate the call probability
+rs2$Prob <- round(rs2$n.price/rs2$n.total, digits = 4)
+
+# Now build for every combination of the conditions a joint new variable (e.g. from Tarif,Direction and DateClass --> HT_POS_Workday variable/column)
+# Direction varable is a factor --> convert it to a character for further operations
+rs2$Direction <- as.character(rs2$Direction)
+
+for(i in 1:nrow(rs2)) {
+  # concatenate the new Variable based on the combinations of the conditions
+  coln <- paste("Prob_", paste(rs2[i,conditionByColumns], collapse = "_"), sep = "")
+  # Add the new variable/column to the resulat data.frame with the corresponding probability
+  rs2[[coln]] <- rs2[i,]$Prob
+}
+
+# reformat the data.frame such that only the newly columns and one price row will be returned
+rs2 <- unique(rs2[, !(names(rs2) %in% c(conditionByColumns, "n.price","n.total","Prob") )])
+
+
+
+
+
+
+
+
 
 
 
