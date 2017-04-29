@@ -95,7 +95,9 @@ Now that you have the data set with the 1min approximated calls and their respec
 ```r
 # Use the crawled data from above. Logging is set to true.
 
-# Get the conditional call probabilities for the whole data set by using just one processor core. The price range for the probabilities is from 0 to 775. The condition is on the variables Tarif and Direction. But you could add e.g. a DateClass column and condition additionally by e.g. Weekend or Workday
+# Get the conditional call probabilities for the whole data set by using just one processor core. 
+# The price range for the probabilities is from 0 to 775. 
+# The condition is on the variables Tarif and Direction. But you could add e.g. a DateClass column and condition additionally by e.g. Weekend or Workday
 call.probs <- getCallProbDataSetOnConditions(marginal.prices.parallel, 1, 0, 775, c("Tarif", "Direction"))
 
 # Plot multiple variables (value) against one target variable (key). The target has to be omitted for the values (2:...)
