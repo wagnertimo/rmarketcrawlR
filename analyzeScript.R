@@ -55,7 +55,11 @@ setLogging(TRUE)
 # --> second part: marginal work price computation (parallel comp.) => ca. 1,5min for 365 days => ca. 1h
 # estimated total time for 2016 => ca. 5-6h
 
+start.time <- Sys.time()
 mwork.parallel <- getMarginalWorkPrices(needs,calls,auctions,2)
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
 
 mwork <- getMarginalWorkPrices(needs,calls,auctions)
 
@@ -105,7 +109,7 @@ m3 <- getMarginalWorkPrices(ne3,ca3,a,2)
 m2 <- getMarginalWorkPrices(ne2,ca2,a,2)
 
 
-#'------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------
 #'
 #' TODO: IMPROVE THE CRAWLING FUNCTION. SOMETIMES ERROR OCCURS.
 #'       ---> Error occurs for operating reserve needs (e.g. on 01.2017, 11.2016 and 04.2016) due to the unziped file name
@@ -118,7 +122,7 @@ m2 <- getMarginalWorkPrices(ne2,ca2,a,2)
 #'------------------------------------------------------------------------------------------------------
 
 
-
+# ------------------------------------------------------------------------------------------------------
 # TODO: calls seem to have some NA (or - ) for the variable df.calls$BETR..NEG. That's why everything is NA
 #       ---> filter for the NA and find a solution how to handle this
 #
@@ -127,63 +131,8 @@ m2 <- getMarginalWorkPrices(ne2,ca2,a,2)
 
 
 
-#'------------------------------------------------------------------------------------------------------
-#'
-#' Prepare a sample for 2015
-#'
-#'------------------------------------------------------------------------------------------------------
 
-df.needs.2015 <- getOperatingReserveNeeds('01.01.2015', '31.12.2015')
-df.calls.2015 <- getOperatingReserveCalls('01.01.2015', '31.12.2015', '6', 'SRL')
-# Weekly auctions always from monday till sunday!!
-df.auctions.2015 <- getOperatingReserveAuctions('29.12.2014', '03.01.2016', '2')
-
-
-
-#'------------------------------------------------------------------------------------------------------
-#'
-#' Prepare a sample for 2016
-#'
-#'------------------------------------------------------------------------------------------------------
-
-# Crawl the raw data for calls, auctions, needs
-df.needs.2016 <- getOperatingReserveNeeds('01.01.2016', '31.12.2016')
-df.calls.2016 <- getOperatingReserveCalls('01.01.2016', '31.12.2016', '6', 'SRL')
-
-# TODO: Be aware of the sign for work price!!
-df.auctions.2016 <- getOperatingReserveAuctions('28.12.2015', '01.01.2017', '2')
-
-# Preprocess the raw data for calls, auctions, needs
-df.prep.calls.2016 <- preProcessOperatingReserveCalls(df.calls.2016)
-df.prep.auctions.2016 <- preprocessOperatingReserveAuctions(df.auctions.2016)
-df.prep.needs.2016 <- preprocessOperatingReserveNeeds(df.needs.2016)
-
-
-
-#'------------------------------------------------------------------------------------------------------
-#'
-#' Start Operating Reserve Call Approximation
-#'
-#'------------------------------------------------------------------------------------------------------
-
-# Approximate the calls WITH RECURSION
-#df.aprx.calls.2016 <- approximateCallsInRecursion(df.prep.needs.2016, df.prep.calls.2016)
-
-
-#'------------------------------------------------------------------------------------------------------
-#'
-#' Start Calculating Marginal Work Price
-#'
-#'------------------------------------------------------------------------------------------------------
-
-#mwork <- getMarginalWorkPrices(df.aprx.calls.2016, df.prep.auctions.2016)
-
-
-
-
-
-
-#'------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------
 #'
 #' Two special cases:
 #' 1. Homogenity: only negative (positive) needs (homogenic needs) but with positive (negative) calls (in both direction)
@@ -204,7 +153,7 @@ df.prep.needs.2016 <- preprocessOperatingReserveNeeds(df.needs.2016)
 # DONE
 # -------------
 
-#'
+# --------------------------------
 #' 2. special case: CrossingZero
 #'
 #' Occurs e.g. 2016-01-01 12:15:00 -2016-01-01 12:30:00 --> 50th obs of the 15min calls of 01.01.2016
@@ -225,7 +174,7 @@ df.prep.needs.2016 <- preprocessOperatingReserveNeeds(df.needs.2016)
 # -------------
 
 
-#'-------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------
 # DETECT CORSSINGZERO CASES
 
 # Count for every 15min section the number of crossings
@@ -330,13 +279,6 @@ plotCorrectedNeeds(r)
 # DONE
 # --------------------
 
-#
-# !!! CAUTION THere are -Inf marginal work prices e.g. at 2016-01-01 02:21:00
-#
-
-
-
-
 
 #'------------------------------------------------------------------------------------------------------
 #'
@@ -346,21 +288,12 @@ plotCorrectedNeeds(r)
 
 
 # There are probs. for NEG_NT, NEG_HT and POS_NT, POS_HT
-# ---> subset on Tarif and Direction variables
-
-
-# Get min and max values of the marginal work prices. This sets the boundaries for the probabilities
-min.mwork <- min(mwork.parallel$marginal_work_price) # e.g. 32
-max.mwork <- max(mwork.parallel$marginal_work_price) # e.g. 774.6, 5999.97
-
 # Beginning at a value below the min will lead to 100% call probability !! Be aware of different tarifs
 
 library(dplyr)
 library(lubridate)
 
 mwork.parallel$DateClass <- ifelse(isWeekendOrHoliday(mwork.parallel$DateTime) == TRUE, "Weekend", "Workday")
-
-
 
 isWeekendOrHoliday <- function(dateTime) {
   library(lubridate)
@@ -379,71 +312,20 @@ isWeekendOrHoliday <- function(dateTime) {
 
 
 # get the probability vector of the min max sequence
-tr <- getCallProbDataSetOnConditions(mwork.parallel, 1, 0, 775, conditionByColumns = c("Tarif", "Direction", "DateClass"))
+tr <- getCallProbDataSetOnConditions(mwork.parallel, 1, 0, 755, conditionByColumns = c("Tarif", "Direction", "DateClass"))
 
-# save the min max sequence in a vector to plot it against the corresponding probabilities
-tr2 <- seq(0, 775)
-
-library(ggplot2)
-
-qplot(tr2,tr, geom="line")
 
 # Plot multiple variables (value) against one target variable (key). The target has to be omitted for the values (2:...)
+library(ggplot2)
+
 tt <- tr
-z <- tt %>%
+plot <- tt %>%
   # Binds rowwise. Every following column gets bind under the last row. The key variabel (here Price) gets repeated
   gather(key, value, 2:ncol(tt)) %>%
   ggplot(aes(x=Price, y=value, colour=key)) +
   geom_line()
 
-
-
-
-data <- mwork.parallel
-mwp <- 775
-conditionByColumns <-  c("Tarif", "Direction", "DateClass")
-
-# Get the number of work pries which are less than the given price and based on the conditioned subset
-rs.price <- data %>%
-  filter(marginal_work_price >= mwp) %>%
-  group_by_(.dots = conditionByColumns) %>%
-  summarise(n = n())
-
-# Get the total amount of observations based on the conditions (filter/subset) BUT for both NEG and POS directions
-rs.total2 <- data %>%
-  group_by_(.dots = conditionByColumns[-which(conditionByColumns %in% "Direction")]) %>%
-  summarise(n = n())
-
-# join the total numbers and the numbers of the whole condition together in the final result array res2
-rs2 <- left_join(rs.price, rs.total2, by = conditionByColumns[-which(conditionByColumns %in% "Direction")], suffix = c(".price",".total"))
-# add the price to which the call probability belongs to the result data.frame
-rs2$Price <- mwp
-# calculate the call probability
-rs2$Prob <- round(rs2$n.price/rs2$n.total, digits = 4)
-
-# Now build for every combination of the conditions a joint new variable (e.g. from Tarif,Direction and DateClass --> HT_POS_Workday variable/column)
-# Direction varable is a factor --> convert it to a character for further operations
-rs2$Direction <- as.character(rs2$Direction)
-
-for(i in 1:nrow(rs2)) {
-  # concatenate the new Variable based on the combinations of the conditions
-  coln <- paste("Prob_", paste(rs2[i,conditionByColumns], collapse = "_"), sep = "")
-  # Add the new variable/column to the resulat data.frame with the corresponding probability
-  rs2[[coln]] <- rs2[i,]$Prob
-}
-
-# reformat the data.frame such that only the newly columns and one price row will be returned
-rs2 <- unique(rs2[, !(names(rs2) %in% c(conditionByColumns, "n.price","n.total","Prob") )])
-
-
-
-
-
-
-
-
-
-
+plot
 
 
 
