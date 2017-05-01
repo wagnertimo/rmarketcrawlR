@@ -5,7 +5,7 @@
 \title{getCallProbDataSetOnConditions}
 \usage{
 getCallProbDataSetOnConditions(data, numCores, price.seq.start, price.seq.end,
-  conditionByColumns)
+  granularity, conditionByColumns)
 }
 \arguments{
 \item{data}{- the data.frame with the calculated marginal workprices from the approximated 1min calls (@seealso getMarginalWorkPrices)}
@@ -15,6 +15,8 @@ getCallProbDataSetOnConditions(data, numCores, price.seq.start, price.seq.end,
 \item{price.seq.start}{- specifies the start price of a price range for which call probabilities should be calculated}
 
 \item{price.seq.end}{- specifies the end price of a price range for which call probabilities should be calculated}
+
+\item{granularity}{- a factor which specifies the steps of the price range. E.g. a factor of 0.1 leads to decimal incrementions (0, 0.1, 0.2, ..., 1.5, 1.6, 1.7...)}
 
 \item{conditionByColumns}{- an array of columns/variables of the input data.frame. They condition the porbability calculation. Therefore they have to be factors or at least factorizable. IMPORTANT: !! The variable Direction has to be in it, since for probability calculation the total number (numerator) depends on POS and NEG power (It makes sense to keep Tarif and Direction which define the product type)}
 }

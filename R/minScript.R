@@ -151,14 +151,39 @@ getReserveAuctions <- function(startDate, endDate, rl) {
   nameLogFile <- paste("getReserveAuctions_", Sys.time(), ".txt", sep="")
   addHandler(writeToFile, file=nameLogFile, level='DEBUG')
 
-  df <- preprocessOperatingReserveAuctions(getOperatingReserveAuctions(startDate, endDate, rl))
+  df <- preprocessOperatingReserveAuctions(getOperatingReserveAuctions(getAuctionDates(startDate, endDate)$start, getAuctionDates(startDate, endDate)$end, rl))
 
   return(df)
 
 }
 
 
+# This helper function is needed in the getReserveAuctions method to format the input dates (start and end)
+# It takes care of the weekly auctions such that the input dates are mapped to monday and sunday dates.
+# E.g. 01.01.2016 to 31.12.2016 is mapped to 28.12.2015 to 01.01.2017 because those are the right dates starting the week from monday till sunday
+# Therefore the function returns a list. $start is the formatted start date and $end the formatted end date
+#
+getAuctionDates <- function(startDate, endDate){
+  library(lubridate)
+  library(zoo)
 
+  s <- as.Date(startDate, "%d.%m.%Y")
+  e <- as.Date(endDate, "%d.%m.%Y")
+
+  # 1 = sunday , 2 = monday ... 7 saturday
+  # start should be monday --> if not shift date BACKWARDS to monday
+  sdiffback <- wday(s) - 2 # if sunday (1) --> so diff is neg. (<0) --> shift back 6
+
+  # end should be sundady ---> if not shift date FORWARDS to sunday
+  ediffforward <- 7 - (wday(e) - 1) # if diff is 7 than it is the correct sunday
+
+  start <- if(s - sdiffback >= 0) s - sdiffback else s - 6
+  end <- if(ediffforward == 7) e else e + ediffforward
+
+  rlist <- list(start = as.character(format(start, "%d.%m.%Y")), end = as.character(format(end, "%d.%m.%Y")))
+  return(rlist)
+
+}
 
 #' @title getOneMinuteCalls
 #'

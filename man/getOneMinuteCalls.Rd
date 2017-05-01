@@ -10,6 +10,8 @@ getOneMinuteCalls(needs, calls, numCores)
 \item{needs}{- The preprocessed operating reserve needs (@seealso getReserveNeeds)}
 
 \item{calls}{- The preprocessed operating reserve calls (@seealso getReserveCalls)}
+
+\item{numCores}{- OPTIONAL PARAMETER --> PARALLEL COMPUNTING NOT YET FUNCTIONAL}
 }
 \value{
 A complete data.frame with the corrected operating reserve needs to approximate the 1min calls (avg_1min_MW).

@@ -33,4 +33,3 @@ export(preprocessOperatingReserveNeeds)
 export(preprocess_rl_calls)
 export(scrape_rl_calls)
 export(setLogging)
-

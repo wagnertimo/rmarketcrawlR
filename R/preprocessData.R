@@ -1241,6 +1241,7 @@ formatAuctionsForParallelComp <- function(auctions) {
 #' @param price.seq.start - specifies the start price of a price range for which call probabilities should be calculated
 #' @param price.seq.end - specifies the end price of a price range for which call probabilities should be calculated
 #' @param conditionByColumns - an array of columns/variables of the input data.frame. They condition the porbability calculation. Therefore they have to be factors or at least factorizable. IMPORTANT: !! The variable Direction has to be in it, since for probability calculation the total number (numerator) depends on POS and NEG power (It makes sense to keep Tarif and Direction which define the product type)
+#' @param granularity - a factor which specifies the steps of the price range. E.g. a factor of 0.1 leads to decimal incrementions (0, 0.1, 0.2, ..., 1.5, 1.6, 1.7...)
 #'
 #' @return an array with all the call probabilities of the specified timeperiod and price range.
 #'
@@ -1260,7 +1261,7 @@ formatAuctionsForParallelComp <- function(auctions) {
 #'
 #' @export
 #'
-getCallProbDataSetOnConditions <- function(data, numCores, price.seq.start, price.seq.end, conditionByColumns) {
+getCallProbDataSetOnConditions <- function(data, numCores, price.seq.start, price.seq.end, granularity, conditionByColumns) {
   library(logging)
   library(foreach)
   library(doParallel)
@@ -1271,14 +1272,15 @@ getCallProbDataSetOnConditions <- function(data, numCores, price.seq.start, pric
   if(getOption("logging")) loginfo("getCallProbDataSetOnConditions - Start foreach loop")
 
 
+  end <- (ceiling(price.seq.end) - price.seq.start) * 1/granularity
   # Calculate for each price within the given price range the call probability specified on a time period and product type (Tarif and Direction)
-  df <- foreach(i = price.seq.start:ceiling(price.seq.end),
+  df <- foreach(i = price.seq.start:end,
                 .combine = function(x,y) rbindlist(list(x,y), use.names = TRUE, fill = TRUE),
                 .export = c("getCallProbForMarginalWorkPrice"),
                 .packages = c("dplyr"),
                 .verbose=FALSE) %dopar% {
 
-                  temp <- getCallProbForMarginalWorkPrice(data, i, conditionByColumns)
+                  temp <- getCallProbForMarginalWorkPrice(data, i*granularity, conditionByColumns)
                   temp
                 }
 

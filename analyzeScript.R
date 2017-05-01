@@ -24,9 +24,12 @@ getTheMeanPowerPrice(df, 'NEG_NT', '20.03.2017')
 #'------------------------------------------------------------------------------------------------------
 #' Testing the production script file: minScript.R
 
-auctions.2016 <- getReserveAuctions('28.12.2015', '01.01.2017', '2')
+auctions.2016 <- getReserveAuctions('01.01.2016', '31.12.2016', '2')
 calls.2016 <- getReserveCalls('01.01.2016', '31.12.2016', '6', 'SRL')
 needs.2016 <- getReserveNeeds('01.01.2016', '31.12.2016')
+
+
+
 
 
 # sample the 2016 data
@@ -312,7 +315,14 @@ isWeekendOrHoliday <- function(dateTime) {
 
 
 # get the probability vector of the min max sequence
-tr <- getCallProbDataSetOnConditions(mwork.parallel, 1, 0, 755, conditionByColumns = c("Tarif", "Direction", "DateClass"))
+# granularity factor
+tr <- getCallProbDataSetOnConditions(mwork.parallel, 1, 0, 100, 0.1, conditionByColumns = c("Tarif", "Direction"))
+
+
+# seq 0 - 755
+# granularity e.g. 0.1 --> 0, 0.1, 0.2, ... 1.0, 1.1, ..., 754.8, 754.8, 755.0 --> n = (755 - 0)*1/granularity + 1
+
+
 
 
 # Plot multiple variables (value) against one target variable (key). The target has to be omitted for the values (2:...)
@@ -327,8 +337,14 @@ plot <- tt %>%
 
 plot
 
+m <- filter(mwork.parallel, DateTime >= "2016-01-01 01:00:00" & DateTime < "2016-01-01 15:00:00")
+m <- filter(mwork.parallel, DateTime >= "2016-01-05 15:00:00" & DateTime < "2016-01-05 22:00:00")
 
+qplot(m$DateTime,m$marginal_work_price, geom = "line")
+qplot(m$DateTime,m$approx_1min_call, geom = "line")
 
-
+ggplot(m, aes(DateTime)) +
+  geom_line(aes(y = marginal_work_price, colour = "marginal work price")) +
+  geom_line(aes(y = approx_1min_call, colour = "1min call"))
 
 

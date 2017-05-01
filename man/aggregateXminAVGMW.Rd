@@ -4,12 +4,12 @@
 \alias{aggregateXminAVGMW}
 \title{aggregateXminAVGMW}
 \usage{
-aggregateXminAVGMW(ne, xmin)
+aggregateXminAVGMW(df.needs, xmin)
 }
 \arguments{
-\item{xmin}{- a timeframe in minutes to build the average values}
-
 \item{df.needs}{- the data.frame containing the operating reserve needs (in MW), a Date (as String) and a Time (as String) variable. As well as type ("RZBedarf")}
+
+\item{xmin}{- a timeframe in minutes to build the average values}
 }
 \value{
 data.frame with the Xmin (normally 1min) DateTime (POSIXct object) and the average operating reserve need value of the Xmin time window
