@@ -48,7 +48,7 @@ There are three main functions which allows you to crawl operating reserve calls
 
 * `getReserveNeeds(startDate, endDate)`: It retrieves the operating reserve needs for a specific time frame of the Netzregelverbund (NRV) based on a 4 sec resolution (source: https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/regelenergie-bedarf-und-abruf). The data gets formatted. Checkout documentation for further information `?getReserveNeeds`.
 
-Below you will find an example code snippet to get started. It is shown how to crawl the operating reserve power data. It should be mentioned that you have to take care of the time period for the auctions data. The data is weekly based from monday till sunday. So when you want to do operations with it in combination with needs and/or calls, the time periods have to overlap. It is also important that you set the logging state in the begining. Till now there is no default value for it. Forgetting to set the log status will break all functions. Every main function (like the get... functions) trigger a log file to be written in the workspace directory (with execution time in its name).
+Below you will find an example code snippet to get started. It is shown how to crawl the operating reserve power data. The auctions data is weekly based from monday till sunday. The `getReserveAuctions()` functions takes care of mapping the input dates to the right weekly beginning and ending. It is also important that you set the logging state in the begining. Till now there is no default value for it. Forgetting to set the log status will break all functions. Every main function (like the get... functions) trigger a log file to be written in the workspace directory (with execution time in its name).
 
 ```r
 # Activate the package in the workspace
@@ -61,7 +61,7 @@ setLogging(TRUE)
 # Get sample data for operating needs, calls and auctions of secondary reserve power from the Netzregelverbund
 needs = getReserveNeeds('01.01.2016', '10.01.2016')
 calls = getReserveCalls('01.01.2016', '10.01.2016', '6', 'SRL')
-auctions = getReserveAuctions('28.12.2015', '10.01.2016', '2')
+auctions = getReserveAuctions('01.01.2016', '10.01.2016', '2')
 
 ```
 
@@ -90,15 +90,16 @@ marginal.prices.parallel = getMarginalWorkPrices(needs, calls, auctions, numCore
 
 #### Calculate the call probabilities
 
-Now that you have the data set with the 1min approximated calls and their respective marginal work prices, you are able to compute conditional call probabilities for different given work prices. The condition can be parameterized by an character array `c()`  with e.g. `Tarif` and `Direction`. Hereby, is the variable `Direction` mandatory, since the denominator (number of total observations) for the probability computation depends on `NEG` and `POS` calls. You can add extra columns/variables to the input data set (here `marginal.prices.parallel`) which can be used as conditional parameters. E.g. one can add a column `DateClass` which specifies if the observation is a work day or week end day. The function `getCallProbDataSet(data, numCores, price.seq.start, price.seq.end, conditionByColumns)` uses parallel computing, so it is necessary to specify the processors cores parameter `numCores`. The input data set has to have the `marginal_work_price` variable. 
+Now that you have the data set with the 1min approximated calls and their respective marginal work prices, you are able to compute conditional call probabilities for different given work prices. The condition can be parameterized by an character array `c()`  with e.g. `Tarif` and `Direction`. Hereby, is the variable `Direction` mandatory, since the denominator (number of total observations) for the probability computation depends on `NEG` and `POS` calls. You can add extra columns/variables to the input data set (here `marginal.prices.parallel`) which can be used as conditional parameters. E.g. one can add a column `DateClass` which specifies if the observation is a work day or week end day. The function `getCallProbDataSet(data, numCores, price.seq.start, price.seq.end, granularity, conditionByColumns)` uses parallel computing, so it is necessary to specify the processors cores parameter `numCores`. The input data set has to have the `marginal_work_price` variable. 
 
 ```r
 # Use the crawled data from above. Logging is set to true.
 
 # Get the conditional call probabilities for the whole data set by using just one processor core. 
 # The price range for the probabilities is from 0 to 775. 
+# The granularity is set to 1 such that the price range adds up in one steps like 0,1,2,..754,755
 # The condition is on the variables Tarif and Direction. But you could add e.g. a DateClass column and condition additionally by e.g. Weekend or Workday
-call.probs <- getCallProbDataSetOnConditions(marginal.prices.parallel, 1, 0, 775, c("Tarif", "Direction"))
+call.probs <- getCallProbDataSetOnConditions(marginal.prices.parallel, 1, 0, 775, 1, c("Tarif", "Direction"))
 
 # Plot multiple variables (value) against one target variable (key). The target has to be omitted for the values (2:...)
 library(ggplot2)
