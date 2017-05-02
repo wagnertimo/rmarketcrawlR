@@ -1065,6 +1065,7 @@ reformatDateTime <- function(dateTime) {
 #'
 #' @param df - The preprocessed and approximated calls (@seealso approximateCallsInRecursion)
 #' @param auctions - The preprocessed operating reserve auctions (@seealso getOperatingReserveAuctions and preprocessOperatingReserveAuctions)
+#' @param numCores - Specifies the number of cores used for the parallel computation
 #'
 #' @return A complete data.frame with the 1min approximated calls and the corresponding marginal work prices for every minute
 #'
@@ -1114,7 +1115,7 @@ calcMarginalWorkPrices <- function(approximated.calls, auctions, numCores) {
 
   #stop cluster
   stopCluster(cl)
-  colnames(mwp) <- "marginal_work_price"
+  colnames(mwp) <- c("marginal_work_price", "num_orders", "total_num_orders", "fill_quote")
 
   df <- cbind(approximated.calls, mwp)
 
@@ -1134,10 +1135,15 @@ matchAuctionsWithCalls <- function(auction.results, callObj){
     filter(date_from <= callObj$DateTime & callObj$DateTime <= date_to & callObj$Tarif == Tarif & callObj$Direction == Direction) %>%
     arrange(work_price) %>%
     mutate(cumsum = cumsum(offered_power_MW))
+
+  totalOrders <- nrow(ss) # number of orders which get filled
   # Get the next higher offer otherwise there will be -Inf for 1min calls less than 5MW (since 5MW is the smallest possible offer)
-  index <- nrow(filter(ss, cumsum <= abs(callObj$avg_1min_MW)))
+  index <- nrow(filter(ss, cumsum <= abs(callObj$avg_1min_MW))) # number of orders which get filled
   m <- ss[min(index + 1, nrow(ss)), ]$work_price
-  m
+
+  r <- data.frame(m,index,totalOrders, index/totalOrders)
+
+  return(r)
 }
 
 # returns the minimal input data.frame which the getMarginalWorkPrice function needs
