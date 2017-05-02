@@ -28,18 +28,27 @@ auctions.2016 <- getReserveAuctions('01.01.2016', '31.12.2016', '2')
 calls.2016 <- getReserveCalls('01.01.2016', '31.12.2016', '6', 'SRL')
 needs.2016 <- getReserveNeeds('01.01.2016', '31.12.2016')
 
-
-
+auctions.test <- getReserveAuctions('01.01.2015', '01.01.2015', '2')
+calls.test <- getReserveCalls('01.01.2015', '01.01.2015', '6', 'SRL')
+needs.test <- getReserveNeeds('01.01.2015', '01.01.2015')
+dfn <-  read.csv("data/needs/201501_SRL_Bedarf.csv", header = FALSE, sep = ",", dec = ".")
+colnames(dfn) <- c("Date", "Time", "Type", "MW")
+dfn <- preprocessOperatingReserveNeeds(dfn)
+needs.test <- filter(dfn, dfn$DateTime >= "2015-01-01 00:00:00" & dfn$DateTime <= "2015-01-01 23:59:59")
+rm(dfn)
 
 
 # sample the 2016 data
 start <- 1  # start observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
-end <- 960   # end observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
+end <- 2   # end observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
 
 needs <- needs.2016[(((start - 1)*225) + 1):(end*225),]
 calls <- calls.2016[start:end,]
 auctions <- auctions.2016
 
+needs <- needs.test[(((start - 1)*225) + 1):(end*225),]
+calls <- calls.test[start:end,]
+auctions <- auctions.test
 
 
 approx.calls <- getOneMinuteCalls(needs,calls)
@@ -57,6 +66,7 @@ setLogging(TRUE)
 # --> first part: 1min call approximation => ca. 6mins --> for 365 days => ca. 4h
 # --> second part: marginal work price computation (parallel comp.) => ca. 1,5min for 365 days => ca. 1h
 # estimated total time for 2016 => ca. 5-6h
+
 
 start.time <- Sys.time()
 mwork.parallel <- getMarginalWorkPrices(needs,calls,auctions,2)

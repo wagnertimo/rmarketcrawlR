@@ -933,7 +933,7 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
 
   if(getOption("logging")) loginfo("approximateCallsInRecursion - Split the 15min sections")
 
-  # split the data.frame on the timezone and cuttedTime (2) variable into 15min sections
+  #split the data.frame on the timezone and cuttedTime (2) variable into 15min sections
   # creates a list
   p <-  split(t.all, t.all$TZ)
   path <- list()
@@ -1084,62 +1084,7 @@ reformatDateTime <- function(dateTime) {
 #'
 #' @export
 #'
-calcMarginalWorkPrices <- function(df, auctions) {
-  library(logging)
-  library(dplyr)
-
-  # Add the Tarif to the calls
-  df <- addTarif(df)
-  # Add Direction NEG or POS to the calls
-  df <- addDirection(df)
-
-  # Init the data.frame which saves all the marginal work prices. Then do a column bind to the original data.frame
-  arraym <- data.frame()
-
-  # Init progress bar
-  if(getOption("logging")) pb <- txtProgressBar(min = 0, max = nrow(df), style = 3)
-
-  if(getOption("logging")) loginfo("calcMarginalWorkPrices - Starting to match every minute with auctions and calculate marginal price")
-
-  # for ever approx. 1min call match auction bids and compute the marginal work price
-  for(i in 1:nrow(df)) {
-
-    callObj <- df[i, ]
-
-    # 1. Get the auctions within the timeframe and the right Tarif and the right direction
-    # 2. Order the auction bids by the work price (min to max)
-    # 3. Cumulate the offered_power_MW in new column cumsum
-    # 4. Subset the auctions which are less or equal to the needed power (absolute value of avg_1min_MW). Fractions are excluded --> see question in analyzeSript.R
-    # 5. Get the highest work price
-    ss <- auctions %>%
-      filter(date_from <= callObj$DateTime & callObj$DateTime <= date_to & callObj$Tarif == Tarif & callObj$Direction == Direction) %>%
-      arrange(work_price) %>%
-      mutate(cumsum = cumsum(offered_power_MW)) %>%
-      filter(cumsum <= abs(callObj$avg_1min_MW)) %>%
-      summarise(m = max(work_price))
-
-    # Store the work price of the auction in an array
-    arraym <- rbind(arraym, ss$m)
-    # update progress bar
-    if(getOption("logging")) setTxtProgressBar(pb, i)
-  }
-
-  # CLose the progress bar
-  if(getOption("logging")) close(pb)
-
-  # Give it the right name and bind it as a new column to the input data.frame
-  colnames(arraym) <- c("marginal_work_price")
-  df <- cbind(df,arraym)
-
-  if(getOption("logging")) loginfo("[INFO]: calcMarginalWorkPrices - DONE")
-
-
-  return(df)
-
-}
-
-
-parallelCompWrapperForMarginalWorkPrices <- function(approximated.calls, auctions, numCores) {
+calcMarginalWorkPrices <- function(approximated.calls, auctions, numCores) {
 
   if(getOption("logging")) loginfo("parallelCompWrapperForMarginalWorkPrices")
   # Add the Tarif to the calls
