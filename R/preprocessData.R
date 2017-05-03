@@ -652,6 +652,8 @@ preProcessOperatingReserveCalls <- function(df.calls) {
   library(logging)
   library(data.table)
   library(lubridate)
+  library(dplyr)
+  library(magrittr)
 
   # Build variable DateTime out of Date and Time (as String) and neg_MW (with a negative num) and pos_MW
   # Time takes the value of "UHRZEIT.VON". The seconds are missing so add ":00"
@@ -1231,13 +1233,13 @@ getCallProbDataSetOnConditions <- function(data, numCores, price.seq.start, pric
 
   end <- (ceiling(price.seq.end) - price.seq.start) * 1/granularity
   # Calculate for each price within the given price range the call probability specified on a time period and product type (Tarif and Direction)
-  df <- foreach(i = price.seq.start:end,
+  df <- foreach(i = 0:end,
                 .combine = function(x,y) rbindlist(list(x,y), use.names = TRUE, fill = TRUE),
                 .export = c("getCallProbForMarginalWorkPrice"),
                 .packages = c("dplyr"),
                 .verbose=FALSE) %dopar% {
 
-                  temp <- getCallProbForMarginalWorkPrice(data, i*granularity, conditionByColumns)
+                  temp <- getCallProbForMarginalWorkPrice(data, (price.seq.start + i*granularity), conditionByColumns)
                   temp
                 }
 
