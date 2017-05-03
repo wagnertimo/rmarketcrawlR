@@ -13,7 +13,7 @@ getMarginalWorkPrices(needs, calls, auctions, numCores)
 
 \item{auctions}{- The preprocessed operating reserve auctions (@seealso getReserveAuctions)}
 
-\item{numCores}{- This is an optional parameter. If set then the parallelWrapper is used. Specify the number of processor cores. Do not exceed your number of Cores.}
+\item{numCores}{-Specifies the number of processor cores. Do not exceed your number of Cores.}
 }
 \value{
 A complete data.frame with the 1min approximated calls and the corresponding marginal work prices for every minute

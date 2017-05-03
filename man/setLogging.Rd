@@ -31,6 +31,4 @@ Timo Wagner, \email{wagnertimo@gmx.de}
 
 This sscript file contains a minimal version with all necessary functions to crawl, preprocess, callculate the approximated 1min operating reserve calls and calculate the marginal workprices.
 All printings in the console are omitted.
-
-TODO: Performance testings: --> parallel computing and maybe substitution of for loops with lapply() functions
 }

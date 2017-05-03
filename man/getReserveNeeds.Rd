@@ -7,9 +7,9 @@
 getReserveNeeds(startDate, endDate)
 }
 \arguments{
-\item{startDate}{sets the starting date. Format (german style): DD.MM.YYYY}
+\item{startDate}{sets the starting date. Format (german style): DD.MM.YYYY CAUTION!!! ---> DO NOT EXPAND THE TIME PERIOD OVER SEVERAL YEARS --> ONLY ONE YEAR IS ALLOWED}
 
-\item{endDate}{sets the ending date. Format (german style): DD.MM.YYYY}
+\item{endDate}{sets the ending date. Format (german style): DD.MM.YYYY CAUTION!!! ---> DO NOT EXPAND THE TIME PERIOD OVER SEVERAL YEARS --> ONLY ONE YEAR IS ALLOWED}
 }
 \value{
 data.frame variable containing the 4sec operating reserve needs.
@@ -21,6 +21,8 @@ The resolution is 4sec. The function can take awhile since it has to download se
 The method also preprocesses the data in a nice format.
 Variables in the returned data.frame:  - MW (numeric). The signed power needs for every 4sec. Point as decimal delimiter
                                        - DateTime (POSIXct). DateTime object in Y-m-d h:m:s format. Be aware of daylight saving. 4sec time windows.
+
+CAUTION!!! ---> DO NOT EXPAND THE TIME PERIOD OVER SEVERAL YEARS --> ONLY ONE YEAR IS ALLOWED (--> see addTimezone function!)
 }
 \examples{
 needs <- getReserveNeeds("30.12.2015", "02.01.2016")

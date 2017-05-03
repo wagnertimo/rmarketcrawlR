@@ -4,12 +4,14 @@
 \alias{calcMarginalWorkPrices}
 \title{calcMarginalWorkPrices}
 \usage{
-calcMarginalWorkPrices(df, auctions)
+calcMarginalWorkPrices(approximated.calls, auctions, numCores)
 }
 \arguments{
-\item{df}{- The preprocessed and approximated calls (@seealso approximateCallsInRecursion)}
-
 \item{auctions}{- The preprocessed operating reserve auctions (@seealso getOperatingReserveAuctions and preprocessOperatingReserveAuctions)}
+
+\item{numCores}{- Specifies the number of cores used for the parallel computation}
+
+\item{df}{- The preprocessed and approximated calls (@seealso approximateCallsInRecursion)}
 }
 \value{
 A complete data.frame with the 1min approximated calls and the corresponding marginal work prices for every minute

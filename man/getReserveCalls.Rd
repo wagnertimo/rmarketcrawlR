@@ -7,9 +7,9 @@
 getReserveCalls(startDate, endDate, uenb, rl)
 }
 \arguments{
-\item{startDate}{- sets the starting date. Format (german style): DD.MM.YYYY}
+\item{startDate}{- sets the starting date. Format (german style): DD.MM.YYYY CAUTION!!! ---> DO NOT EXPAND THE TIME PERIOD OVER SEVERAL YEARS --> ONLY ONE YEAR IS ALLOWED}
 
-\item{endDate}{- sets the ending date. Format (german style): DD.MM.YYYY}
+\item{endDate}{- sets the ending date. Format (german style): DD.MM.YYYY CAUTION!!! ---> DO NOT EXPAND THE TIME PERIOD OVER SEVERAL YEARS --> ONLY ONE YEAR IS ALLOWED}
 
 \item{uenb}{- 50Hz (4), TenneT (2), Amprion (3), TransnetBW (1), Netzregelverbund (6), IGCC (11)}
 
@@ -26,6 +26,8 @@ The method also preprocesses the data in a nice format.
 Variables in the returned data.frame:  - neg_MW (numeric). The signed power calls within the 15min time window. Point as decimal delimiter
                                        - pos_MW (numeric). The signed power calls within the 15min time window. Point as decimal delimiter
                                        - DateTime (POSIXct). DateTime object in Y-m-d h:m:s format. Be aware of daylight saving. 15min time windows.
+
+CAUTION!!! ---> DO NOT EXPAND THE TIME PERIOD OVER SEVERAL YEARS --> ONLY ONE YEAR IS ALLOWED (--> see addTimezone function!)
 }
 \examples{
 # Get the secondary calls for one week of the Netzregelverbund
