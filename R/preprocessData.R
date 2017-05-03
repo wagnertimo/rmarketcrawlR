@@ -748,6 +748,8 @@ preprocessOperatingReserveNeeds <- function(df.needs) {
 # It adds the column TZ to the in put data.frame which extracts the time zone (CEST or CET) out of the date
 # It also handles the special case of daylight savings such that the second 2am hour gets the time zone CET on the last sunday in october.
 addTimezone <- function(df) {
+
+  library(dplyr)
   df$TZ <- format(df[, "DateTime"], format="%Z")
 
   # CAUTION!!! ---> IF df spans over several years !!!

@@ -28,11 +28,14 @@ auctions.2016 <- getReserveAuctions('01.01.2016', '31.12.2016', '2')
 calls.2016 <- getReserveCalls('01.01.2016', '31.12.2016', '6', 'SRL')
 needs.2016 <- getReserveNeeds('01.01.2016', '31.12.2016')
 
-auctions.2015 <- getReserveAuctions('01.01.2015', '31.12.2015', '2')
-calls.2015 <- getReserveCalls('01.01.2015', '31.12.2015', '6', 'SRL')
-needs.2015 <- getReserveNeeds('01.01.2015', '31.12.2015')
+auctions <- getReserveAuctions('24.10.2016', '30.10.2016', '2')
+calls <- getReserveCalls('30.10.2016', '30.10.2016', '6', 'SRL')
+needs <- getReserveNeeds('30.10.2016', '30.10.2016')
 
-needs.test <- filter(dfn, dfn$DateTime >= "2015-01-01 00:00:00" & dfn$DateTime <= "2015-01-01 23:59:59")
+
+
+approx <- getOneMinuteCalls(needs,calls)
+
 
 
 # sample the 2016 data
@@ -66,7 +69,7 @@ setLogging(TRUE)
 
 
 start.time <- Sys.time()
-mwork.parallel <- getMarginalWorkPrices(needs,calls,auctions,2)
+m <- getMarginalWorkPrices(needs,calls,auctions,2)
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 time.taken
