@@ -750,8 +750,11 @@ preprocessOperatingReserveNeeds <- function(df.needs) {
 # It adds the column TZ to the in put data.frame which extracts the time zone (CEST or CET) out of the date
 # It also handles the special case of daylight savings such that the second 2am hour gets the time zone CET on the last sunday in october.
 addTimezone <- function(df) {
-
+  library(logging)
   library(dplyr)
+
+  if(getOption("logging")) loginfo("addTimezone - Add time zone")
+
   df$TZ <- format(df[, "DateTime"], format="%Z")
 
   # CAUTION!!! ---> IF df spans over several years !!!
@@ -762,7 +765,7 @@ addTimezone <- function(df) {
 
   if (nrow(fr) > 0){
     # get the rows where the two 2am hours of the daylight saving change in october lay
-    rows <- which(df$DateTime >= as.POSIXct(paste(lastDayOfMonth(1,10,year), "02:00:00", sep = " ")) & df$DateTime < as.POSIXct(paste(lastDayOfMonth(1,10,year), "03:00:00", sep = " ")))
+    rows <- which(df$DateTime >= as.POSIXct(paste(lastDayOfMonth(1,10,year), "01:59:59", sep = " ")) & df$DateTime < as.POSIXct(paste(lastDayOfMonth(1,10,year), "03:00:00", sep = " ")))
     # the first 4 are the "old" (CEST) and the last 4 are the new (CET) 2am hours for the 15min calls --> 4*15 = 60
     # for needs it is the first 60 and last 60 because they are minutely --> so solve it with length of rows
     end <- length(rows)/2 + 1
