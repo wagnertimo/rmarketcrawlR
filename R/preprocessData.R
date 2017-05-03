@@ -482,6 +482,7 @@ approxRecursionWith15minChunk <- function(dataframe) {
     }
   }
 
+  res$num_recursions <- counter
   return(res)
 
 }
@@ -742,18 +743,21 @@ preprocessOperatingReserveNeeds <- function(df.needs) {
 
 }
 
+# CAUTION!!! ---> IF df spans over several years !!!
 # This helper method is used in @seealso preprocessOperatingReserveNeeds and @seealso preprocessOperatingReserveCalls
 # It adds the column TZ to the in put data.frame which extracts the time zone (CEST or CET) out of the date
 # It also handles the special case of daylight savings such that the second 2am hour gets the time zone CET on the last sunday in october.
 addTimezone <- function(df) {
   df$TZ <- format(df[, "DateTime"], format="%Z")
 
-  # Check if in df is the change of daylight saving
-  fr <- filter(df, DateTime >= as.POSIXct(paste(lastDayOfMonth(1,10,2016), "02:00:00", sep = "")) & DateTime < as.POSIXct(paste(lastDayOfMonth(1,10,2016), "03:00:00", sep = "")))
+  # CAUTION!!! ---> IF df spans over several years !!!
+  year <- as.numeric(unique(format(df$DateTime , "%Y")))
+  # Check if in df is the change of daylight saving --> last sunday (1) in october (10) for the given year (format(DateTime, "%Y"))
+  fr <- filter(df, DateTime >= as.POSIXct(paste(lastDayOfMonth(1,10,year), "02:00:00", sep = "")) & DateTime < as.POSIXct(paste(lastDayOfMonth(1,10,year), "03:00:00", sep = "")))
 
   if (nrow(fr) > 0){
     # get the rows where the two 2am hours of the daylight saving change in october lay
-    rows <- which(df$DateTime >= as.POSIXct(paste(lastDayOfMonth(1,10,2016), "02:00:00", sep = "")) & df$DateTime < as.POSIXct(paste(lastDayOfMonth(1,10,2016), "03:00:00", sep = "")))
+    rows <- which(df$DateTime >= as.POSIXct(paste(lastDayOfMonth(1,10,year), "02:00:00", sep = "")) & df$DateTime < as.POSIXct(paste(lastDayOfMonth(1,10,year), "03:00:00", sep = "")))
     # the first 4 are the "old" (CEST) and the last 4 are the new (CET) 2am hours for the 15min calls --> 4*15 = 60
     # for needs it is the first 60 and last 60 because they are minutely --> so solve it with length of rows
     end <- length(rows)/2 + 1

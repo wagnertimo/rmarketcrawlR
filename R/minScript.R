@@ -45,8 +45,10 @@ setLogging <- function(logger) {
 #' Variables in the returned data.frame:  - MW (numeric). The signed power needs for every 4sec. Point as decimal delimiter
 #'                                        - DateTime (POSIXct). DateTime object in Y-m-d h:m:s format. Be aware of daylight saving. 4sec time windows.
 #'
-#' @param startDate sets the starting date. Format (german style): DD.MM.YYYY
-#' @param endDate sets the ending date. Format (german style): DD.MM.YYYY
+#' CAUTION!!! ---> DO NOT EXPAND THE TIME PERIOD OVER SEVERAL YEARS --> ONLY ONE YEAR IS ALLOWED (--> see addTimezone function!)
+#'
+#' @param startDate sets the starting date. Format (german style): DD.MM.YYYY CAUTION!!! ---> DO NOT EXPAND THE TIME PERIOD OVER SEVERAL YEARS --> ONLY ONE YEAR IS ALLOWED
+#' @param endDate sets the ending date. Format (german style): DD.MM.YYYY CAUTION!!! ---> DO NOT EXPAND THE TIME PERIOD OVER SEVERAL YEARS --> ONLY ONE YEAR IS ALLOWED
 #'
 #' @return data.frame variable containing the 4sec operating reserve needs.
 #'
@@ -84,9 +86,11 @@ getReserveNeeds <- function(startDate, endDate) {
 #'                                        - pos_MW (numeric). The signed power calls within the 15min time window. Point as decimal delimiter
 #'                                        - DateTime (POSIXct). DateTime object in Y-m-d h:m:s format. Be aware of daylight saving. 15min time windows.
 #'
+#' CAUTION!!! ---> DO NOT EXPAND THE TIME PERIOD OVER SEVERAL YEARS --> ONLY ONE YEAR IS ALLOWED (--> see addTimezone function!)
 #'
-#' @param startDate - sets the starting date. Format (german style): DD.MM.YYYY
-#' @param endDate - sets the ending date. Format (german style): DD.MM.YYYY
+#'
+#' @param startDate - sets the starting date. Format (german style): DD.MM.YYYY CAUTION!!! ---> DO NOT EXPAND THE TIME PERIOD OVER SEVERAL YEARS --> ONLY ONE YEAR IS ALLOWED
+#' @param endDate - sets the ending date. Format (german style): DD.MM.YYYY CAUTION!!! ---> DO NOT EXPAND THE TIME PERIOD OVER SEVERAL YEARS --> ONLY ONE YEAR IS ALLOWED
 #' @param uenb - 50Hz (4), TenneT (2), Amprion (3), TransnetBW (1), Netzregelverbund (6), IGCC (11)
 #' @param rl - SRL, MRL, RZ_SALDO, REBAP, ZUSATZMASSNAHMEN, NOTHILFE
 #'

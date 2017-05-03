@@ -357,7 +357,6 @@ formatGermanNumber <- function(x){
 # This helper function downloads the zip file and returns a data.frame of a given date code.
 # The date code is specified by the year and month e.g. "201612". All the files have a standard naming.
 #
-# TODO improve this function --> causes arbitrary errors while writing and reading in the temp csv file
 #
 scrape_rl_need_month <- function(date_code) {
   library(logging)
@@ -366,8 +365,13 @@ scrape_rl_need_month <- function(date_code) {
   # Create a temporary file to store the downloaded zip file in it
   tempFileName <- paste("needs_", date_code, sep = "")
 
-    temp <- tempfile(tempFileName, "./")
-  url = paste('https://www.transnetbw.de/files/bis/srlbedarf/', date_code, '_SRL_Bedarf.zip', sep = "");
+  temp <- tempfile(tempFileName, "./")
+  # CAUTION --> LINK structure changes before including september 2015 --> add extra "... .csv.zip"
+  if(as.numeric(date_code) <= 201509) {
+    url = paste('https://www.transnetbw.de/files/bis/srlbedarf/', date_code, '_SRL_Bedarf.csv.zip', sep = "");
+  } else {
+    url = paste('https://www.transnetbw.de/files/bis/srlbedarf/', date_code, '_SRL_Bedarf.zip', sep = "");
+  }
 
   if(getOption("logging")) loginfo(paste("scrape_rl_need_month - Download data for ", date_code))
 

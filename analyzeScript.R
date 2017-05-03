@@ -28,14 +28,11 @@ auctions.2016 <- getReserveAuctions('01.01.2016', '31.12.2016', '2')
 calls.2016 <- getReserveCalls('01.01.2016', '31.12.2016', '6', 'SRL')
 needs.2016 <- getReserveNeeds('01.01.2016', '31.12.2016')
 
-auctions.test <- getReserveAuctions('01.01.2015', '01.01.2015', '2')
-calls.test <- getReserveCalls('01.01.2015', '01.01.2015', '6', 'SRL')
-needs.test <- getReserveNeeds('01.01.2015', '01.01.2015')
-dfn <-  read.csv("data/needs/201501_SRL_Bedarf.csv", header = FALSE, sep = ",", dec = ".")
-colnames(dfn) <- c("Date", "Time", "Type", "MW")
-dfn <- preprocessOperatingReserveNeeds(dfn)
+auctions.2015 <- getReserveAuctions('01.01.2015', '31.12.2015', '2')
+calls.2015 <- getReserveCalls('01.01.2015', '31.12.2015', '6', 'SRL')
+needs.2015 <- getReserveNeeds('01.01.2015', '31.12.2015')
+
 needs.test <- filter(dfn, dfn$DateTime >= "2015-01-01 00:00:00" & dfn$DateTime <= "2015-01-01 23:59:59")
-rm(dfn)
 
 
 # sample the 2016 data
@@ -101,25 +98,6 @@ system.time(getMarginalWorkPrices(needs,calls,auctions,2))
 #   ----> DONE
 #
 #'------------------------------------------------------------------------------------------------------
-setLogging(TRUE)
-
-ne <- getReserveNeeds("27.03.2016","27.03.2016")
-ne2 <- getReserveNeeds("29.10.2016","29.10.2016")
-ne3 <- getReserveNeeds("30.10.2016","30.10.2016")
-
-ca <- getReserveCalls("27.03.2016","27.03.2016", '6', 'SRL')
-ca2 <- getReserveCalls("29.10.2016","29.10.2016", '6', 'SRL')
-ca3 <- getReserveCalls("30.10.2016","30.10.2016", '6', 'SRL')
-
-a <- getReserveAuctions("24.10.2016","30.10.2016", 2)
-a2 <- getReserveAuctions("21.03.2016","27.03.2016", 2)
-
-e <- getOneMinuteCalls(ne, ca)
-e3 <- getOneMinuteCalls(ne3, ca3)
-
-m <- getMarginalWorkPrices(ne,ca,a2,2)
-m3 <- getMarginalWorkPrices(ne3,ca3,a,2)
-m2 <- getMarginalWorkPrices(ne2,ca2,a,2)
 
 
 # -----------------------------------------------------------------------------------------------------
