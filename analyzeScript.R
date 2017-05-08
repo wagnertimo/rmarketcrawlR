@@ -40,7 +40,7 @@ approx <- getOneMinuteCalls(needs,calls)
 
 # sample the 2016 data
 start <- 1  # start observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
-end <- 2   # end observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
+end <- 96   # end observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
 
 needs <- needs.2016[(((start - 1)*225) + 1):(end*225),]
 calls <- calls.2016[start:end,]
@@ -350,7 +350,7 @@ isWeekendOrHoliday <- function(dateTime) {
 
 # get the probability vector of the min max sequence
 # granularity factor
-tr <- getCallProbDataSetOnConditions(mwork.parallel, 1, 0, 100, 0.1, conditionByColumns = c("Tarif", "Direction"))
+tr <- getCallProbDataSetOnConditions(m, 1, 0, 100, 0.1, conditionByColumns = c("Tarif", "Direction"))
 
 
 # seq 0 - 755
@@ -380,5 +380,11 @@ qplot(m$DateTime,m$approx_1min_call, geom = "line")
 ggplot(m, aes(DateTime)) +
   geom_line(aes(y = marginal_work_price, colour = "marginal work price")) +
   geom_line(aes(y = approx_1min_call, colour = "1min call"))
+
+
+
+
+
+
 
 
