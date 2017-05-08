@@ -1150,10 +1150,10 @@ matchAuctionsWithCalls <- function(auction.results, callObj){
 
   totalOrders <- nrow(ss) # number of orders which get filled
   # Get the next higher offer otherwise there will be -Inf for 1min calls less than 5MW (since 5MW is the smallest possible offer)
-  index <- nrow(filter(ss, cumsum <= abs(callObj$avg_1min_MW))) + 1 # number of orders which get filled
-  m <- ss[min(index, nrow(ss)), ]$work_price
+  index <- nrow(filter(ss, cumsum <= abs(callObj$avg_1min_MW))) # + 1 ^= number of orders which get filled
+  m <- ss[min(index + 1, nrow(ss)), ]$work_price
 
-  r <- data.frame(m,index,totalOrders, index/totalOrders)
+  r <- data.frame(m, min(index + 1, nrow(ss)), totalOrders, min(index + 1, nrow(ss))/totalOrders)
 
   return(r)
 }
