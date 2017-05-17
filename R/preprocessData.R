@@ -934,6 +934,8 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
 
   # Before merging, TZ needs to be set to a numeric value otherwise the order gets different in a change from CET to CEST (CEST is before CET)
   # the numeric value of 0 or 1 is based on the first observation (weather the time series starts with CEST or CET)
+  # CAUTION: --> This leads to different ordering in case the time period goes over two TZ --> e.g. 1.1.2016 - 31.12.2016 --> There is CET-CEST-CET ---> odering will be CET-CET-CEST such that october is the last
+  #          --> Order by date again at the end!!!
   df.needs.1min$TZ <- ifelse(df.needs.1min$TZ == df.needs.1min[1, "TZ"], 0, 1)
   df.calls$TZ <- ifelse(df.calls$TZ == df.calls[1, "TZ"], 0, 1)
 
@@ -979,6 +981,11 @@ approximateCallsInRecursion <- function(df.needs, df.calls) {
   # Reformat DateTime and cuttedTime
   res$DateTime <- reformatDateTime(res$DateTime)
   res$cuttedTime <- reformatDateTime(res$cuttedTime)
+
+  if(getOption("logging")) loginfo("approximateCallsInRecursion - sort by dates")
+  # has to be sorted again due to TZ -> 0,1 change --> if CET-CEST-CET --> the date order gets shuffled
+  res <- res %>% arrange(DateTime)
+
 
   if(getOption("logging")) loginfo("approximateCallsInRecursion - DONE")
 
@@ -1098,6 +1105,9 @@ reformatDateTime <- function(dateTime) {
 #' @export
 #'
 calcMarginalWorkPrices <- function(approximated.calls, auctions, numCores) {
+  library(foreach)
+  library(doParallel)
+  library(logging)
 
   if(getOption("logging")) loginfo("parallelCompWrapperForMarginalWorkPrices")
   # Add the Tarif to the calls
@@ -1109,9 +1119,6 @@ calcMarginalWorkPrices <- function(approximated.calls, auctions, numCores) {
   # POSIXct (DateTime), Date (date_from, date_to) and characters (Tarif and Direction) must be converted
   c <- formatApproxCallsForParallelComp(approximated.calls)
   a <- formatAuctionsForParallelComp(auctions)
-
-  library(foreach)
-  library(doParallel)
 
   # setup parallel backend to use many processors
   #cores = detectCores()
