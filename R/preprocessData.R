@@ -1233,6 +1233,7 @@ formatAuctionsForParallelComp <- function(auctions) {
 #'
 getCallProbDataSetOnConditions <- function(data, numCores, price.seq.start, price.seq.end, granularity, conditionByColumns) {
   library(logging)
+  library(data.table)
   library(foreach)
   library(doParallel)
 
@@ -1288,7 +1289,7 @@ getCallProbForMarginalWorkPrice <- function(data, mwp, conditionByColumns) {
   # join the total numbers and the numbers of the whole condition together in the final result array res2
   rs2 <- left_join(rs.price, rs.total2, by = conditionByColumns[-which(conditionByColumns %in% "Direction")], suffix = c(".price",".total"))
 
-  # Handle Special case: If price is to high and not all directions and tarifs combinations are fullfiled --> set counts to zero and prob (not Inf)
+  # Handle Special case: If price is too high and not all directions and tarifs combinations are fullfiled --> set counts to zero and prob (not Inf)
   # Also fill the Direction with the last standing --> ?!?!? What if two and only one missing?
   # rs2[is.na(rs2$n.total), "n.total"] <- 0
   # rs2[is.na(rs2$Direction), "Direction"] <- rs2[!is.na(rs2$Direction), "Direction"]
@@ -1314,6 +1315,19 @@ getCallProbForMarginalWorkPrice <- function(data, mwp, conditionByColumns) {
 
   return(rs2)
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

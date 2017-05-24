@@ -19,7 +19,8 @@ Imports:
     ggplot2,
     foreach,
     doParallel,
-    logging
+    logging,
+    plotly
 Author: Timo Wagner
 Maintainer: Timo Wagner <wagnertimo@gmx.de>
 Description: Retrieves the operating reserve call data of https://

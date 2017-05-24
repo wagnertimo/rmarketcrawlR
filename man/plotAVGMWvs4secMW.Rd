@@ -27,10 +27,4 @@ plotXminAVGMWvs4secMW(dataframe)
 Timo Wagner, \email{wagnertimo@gmx.de}
 
 It contains main functions to provide several plots for analyzing operating reserve data.
-
-Some useful keyboard shortcuts for package authoring:
-
- Build and Reload Package:  'Cmd + Shift + B'
- Check Package:             'Cmd + Shift + E'
- Test Package:              'Cmd + Shift + T'
 }

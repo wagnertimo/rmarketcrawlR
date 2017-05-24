@@ -154,92 +154,11 @@ nextMonthDate <- function(date){
 }
 
 
-#'---------------------------------------------------------
-
-#
-# HELPER FUNCTIONS FOR AUCTIONS DATA
-#
-
-scrape_rl_auctions <- function(date_from, productId) {
-  library(logging)
-  library(httr)
-
-  url = 'https://www.regelleistung.net/ext/tender/';
-
-  payload = list(
-    'from' = date_from,
-    'productId' = productId
-  );
-
-  postResponse <- POST(url, body = payload, encode = "form", verbose())
-
-  return(postResponse)
-
-}
-
-
-# Crawl the reults table of the auctions to get the auctionIds within the given timeframe. The results of the auction table contain all acutionIds from the given start date till the current date
-getAuctionIds <- function(response, date_from, date_to) {
-  library(logging)
-  library(XML)
-
-  # Calculate the time difference in weeks of the given start and end date. This value sets the needed amount of auctionIds from the response since they are weekly auctions
-  tdiff <- floor(as.double(difftime(as.Date(date_to, format = "%d.%m.%Y") ,as.Date(date_from, format = "%d.%m.%Y") , units = c("weeks")))) + 1
-
-  parsedHtml <- htmlParse(content(response, "text"))
-
-  # Xpath exppression to retrieve all links in the results (tender) table
-  # There are three links in all table column containing the auctionId -> just get a unique/distinct link (contains 'details')
-  link_elements <- xpathSApply(parsedHtml, "id('tender-table')/tbody/tr/td/a[contains(@href,'details')]/@href")
-
-  auctionIds <- c()
-
-  # Stop when last weekly auction specified by the given end date is reached. No need to parse all elements (result lasts till current/latest date)
-  for(i in 1:tdiff) {
-
-    # Split the link on the slashes '/' and take only the last element, this is the auctionId
-    splitstring <- strsplit(link_elements[i], "/")[[1]]
-    auctionId <- splitstring[length(splitstring)]
-
-    auctionIds <- append(auctionIds, auctionId)
-  }
-
-  return(auctionIds)
-
-}
-
-
-callGETforAuctionResults <- function(auctionId) {
-  library(logging)
-  library(httr)
-
-  if(getOption("logging")) loginfo(paste("callGETforAuctionResults - Called for ", auctionId))
-
-  url = paste('https://www.regelleistung.net/ext/tender/results/anonymousdownload/',auctionId, sep = "");
-
-  getResponse <- GET(url, verbose())
-
-  return(content(getResponse, "text"))
-
-}
-
-
-
-#'---------------------------------------------------------
-
-#
-# COMMON HELPER FUNCITON (CALL AND AUCTION)
-#
-
 # Ignore the Warning message: header and 'col.names' are of different lengths
 # This is a strange error it still works
-#
-# # TODO improve this function --> causes arbitrary errors while writing and reading in the temp csv file
-#
-#'
 #' @export
 #'
-build_df_rl_calls_auctions <- function(response_content, case, fileName) {
+build_df_rl_calls <- function(response_content, fileName) {
   library(logging)
   # Write a temporary csv file out of the preprocessed response data.
   # This whole approach with the temp.csv file allows to process bigger files.
@@ -247,65 +166,34 @@ build_df_rl_calls_auctions <- function(response_content, case, fileName) {
   # Write a temporary csv file from the char variable
   write.csv(response_content, file = fileName, eol = "\n")
 
-  # This if statement builds the data.frame for the operating reserve calls
-  if(case == "calls") {
+  if(getOption("logging")) loginfo("build_rl_calls_auctions - Called for Reserve Calls. Read in file")
 
-    if(getOption("logging")) loginfo("build_rl_calls_auctions - Called for Reserve Calls. Read in file")
+  # Read in the temporary csv file
+  #
+  # Writing the csv file does not remove the "..." parenthesis of the char variable. Furthermore it adds an extra line at the top: "","x" and at the beginning of the second line: "1",
+  # Therefore the read in function uses the parameters:
+  #     quote = "" (get rid of parenthesis)
+  #     skip = 1 (to get rid off the extra line at the beginning)
+  df <- read.csv2(file = fileName, header = TRUE, sep = ";", na.strings = c("","-"), quote = "", skip = 1)
 
-    # Read in the temporary csv file
-    #
-    # Writing the csv file does not remove the "..." parenthesis of the char variable. Furthermore it adds an extra line at the top: "","x" and at the beginning of the second line: "1",
-    # Therefore the read in function uses the parameters:
-    #     quote = "" (get rid of parenthesis)
-    #     skip = 1 (to get rid off the extra line at the beginning)
-    df <- read.csv2(file = fileName, header = TRUE, sep = ";", na.strings = c("","-"), quote = "", skip = 1)
+  # Rename the first date column which has a cryptic name because of the "1",)
+  colnames(df)[1] <- "DATUM"
 
-    # Rename the first date column which has a cryptic name because of the "1",)
-    colnames(df)[1] <- "DATUM"
+  # --> get rid of not needed columns and format variables. BETR..NEG and BETR..POS are numeric values. As factors they caused a problem
+  df <- df[, c("DATUM", "UHRZEIT.VON", "BETR..NEG", "BETR..POS")]
 
-    # --> get rid of not needed columns and format variables. BETR..NEG and BETR..POS are numeric values. As factors they caused a problem
-    df <- df[, c("DATUM", "UHRZEIT.VON", "BETR..NEG", "BETR..POS")]
+  df$DATUM <- as.Date(df$DATUM, "%d.%m.%Y")
+  # Change the number style
+  # Strange Bug !!! ---> Sometimes pos MW (29.10.2016) or neg MW (e.g. 25.10.2016) have point as decimal delimiter. But in downloaded csv file it is comma
+  # and the corresponding neg (pos) is like expected decimal delimiter with comma!!!
+  #
+  # 25.10.2016 at 17:45 --> value is german format 1.035,150 --> function ignores and can't make numeric --> function has to check if only point and no comma
 
-    df$DATUM <- as.Date(df$DATUM, "%d.%m.%Y")
-    # Change the number style
-    # Strange Bug !!! ---> Sometimes pos MW (29.10.2016) or neg MW (e.g. 25.10.2016) have point as decimal delimiter. But in downloaded csv file it is comma
-    # and the corresponding neg (pos) is like expected decimal delimiter with comma!!!
-    #
-    # 25.10.2016 at 17:45 --> value is german format 1.035,150 --> function ignores and can't make numeric --> function has to check if only point and no comma
+  # Format first the number values --> has to use apply because of the if statement (the strange bug --> @see formatGermanNumber())
+  df[,c("BETR..NEG","BETR..POS")] <- apply(df[,c("BETR..NEG","BETR..POS")], MARGIN=1:2, FUN=function(x2) formatGermanNumber(x2) )
 
-    # Format first the number values --> has to use apply because of the if statement (the strange bug --> @see formatGermanNumber())
-    df[,c("BETR..NEG","BETR..POS")] <- apply(df[,c("BETR..NEG","BETR..POS")], MARGIN=1:2, FUN=function(x2) formatGermanNumber(x2) )
-
-    df$BETR..NEG <- -as.numeric(df$BETR..NEG)
-    df$BETR..POS <- as.numeric(df$BETR..POS)
-
-  }
-  # This if statement builds the data.frame for the operating reserve auctions
-  else if(case == "auctions") {
-
-    if(getOption("logging")) loginfo("build_rl_calls_auctions - Called for Reserve Auctions. Read in file")
-
-    df <- read.csv(file = fileName,
-                   header = TRUE,
-                   sep = ";",
-                   dec = ",",
-                   na.strings = c("","-"),
-                   quote = "",
-                   skip = 1,
-                   #row.names=NULL,
-                   col.names=c("date_from","date_to","product_name","power_price","work_price",
-                               "ap_payment_direction","offered_power_MW","called_power_MW","offers_AT", "rr")
-    )
-    # Workaround to avoid an error -> strange Bug BUT seems to work
-    df$rr <- NULL
-    # Delete last row -> there is an additional row with a parenthesis and NAs
-    df <- df[1:nrow(df)-1,]
-
-    df$date_to <- as.Date(df$date_to, "%d.%m.%Y")
-    df$date_from <- as.Date(df$date_from, "%d.%m.%Y")
-
-  }
-
+  df$BETR..NEG <- -as.numeric(df$BETR..NEG)
+  df$BETR..POS <- as.numeric(df$BETR..POS)
 
   # DELETE temporary files
   #
@@ -340,6 +228,121 @@ formatGermanNumber <- function(x){
   # If there is just a point (no comma) return that value
   return(x)
 }
+
+
+
+
+#'---------------------------------------------------------
+
+#
+# HELPER FUNCTIONS FOR AUCTIONS DATA
+#
+
+scrape_rl_auctions <- function(date_from, productId) {
+  library(logging)
+  library(httr)
+
+  url = 'https://www.regelleistung.net/ext/tender/';
+
+  payload = list(
+    'from' = date_from,
+    'productId' = productId
+  );
+
+  postResponse <- POST(url, body = payload, encode = "form", verbose())
+
+  return(postResponse)
+
+}
+
+
+# Crawl the results table of the auctions to get the auctionIds within the given timeframe. The results of the auction table contain all acutionIds from the given start date till the current date
+getAuctionIds <- function(response, date_from, date_to) {
+  library(logging)
+  library(XML)
+
+  # Calculate the time difference in weeks of the given start and end date. This value sets the needed amount of auctionIds from the response since they are weekly auctions
+  tdiff <- floor(as.double(difftime(as.Date(date_to, format = "%d.%m.%Y") ,as.Date(date_from, format = "%d.%m.%Y") , units = c("weeks")))) + 1
+
+  parsedHtml <- htmlParse(content(response, "text"))
+
+  # Xpath exppression to retrieve all links in the results (tender) table
+  # There are three links in all table column containing the auctionId -> just get a unique/distinct link (contains 'details')
+  link_elements <- xpathSApply(parsedHtml, "id('tender-table')/tbody/tr/td/a[contains(@href,'details')]/@href")
+
+  auctionIds <- c()
+
+  # Stop when last weekly auction specified by the given end date is reached. No need to parse all elements (result lasts till current/latest date)
+  for(i in 1:tdiff) {
+
+    # Split the link on the slashes '/' and take only the last element, this is the auctionId
+    splitstring <- strsplit(link_elements[i], "/")[[1]]
+    auctionId <- splitstring[length(splitstring)]
+
+    auctionIds <- append(auctionIds, auctionId)
+  }
+
+  print(paste("Auction IDs: ", auctionIds))
+
+  return(auctionIds)
+
+}
+
+
+callGETforAuctionResults <- function(auctionId, filename) {
+  library(logging)
+  library(httr)
+
+  if(getOption("logging")) loginfo(paste("callGETforAuctionResults - Called for ", auctionId))
+
+  url = paste('https://www.regelleistung.net/ext/tender/results/anonymousdownload/',auctionId, sep = "");
+
+  getResponse <- GET(url, write_disk(filename, overwrite = TRUE), verbose())
+
+  return(content(getResponse, "text"))
+
+}
+
+
+
+# Ignore the Warning message: header and 'col.names' are of different lengths
+# This is a strange error it still works
+#' @export
+#'
+build_df_rl_auctions <- function(fileName) {
+  library(logging)
+
+  if(getOption("logging")) loginfo(paste("build_rl_calls_auctions - Read in file", fileName))
+
+  df <- read.csv(file = fileName,
+                 header = TRUE,
+                 sep = ";",
+                 dec = ",",
+                 na.strings = c("","-"),
+                 quote = "",
+                 skip = 1
+  )
+
+  # Skip last column --> this column is strangely added. Dont know why
+  df <- df[,1:9]
+  colnames(df) <- c("date_from","date_to","product_name","power_price","work_price","ap_payment_direction","offered_power_MW","called_power_MW","offers_AT")
+  # Delete last row -> there is an additional row with a parenthesis and NAs
+  # df <- df[1:nrow(df)-1,]
+
+
+  df$date_to <- as.Date(df$date_to, "%d.%m.%Y")
+  df$date_from <- as.Date(df$date_from, "%d.%m.%Y")
+
+
+  # DELETE temporary files
+  #
+  invisible(if (file.exists(fileName)) file.remove(fileName))
+
+  return(df)
+
+}
+
+
 
 
 #'---------------------------------------------------------
@@ -395,7 +398,7 @@ scrape_rl_need_month <- function(date_code) {
   # delete the temporary file. Not needed anymore after csv is unzipped
   file.remove(zipF)
 
-  # get the csv file name of the unzipped temp file. This step is important because sometimes the filname changes.
+  # get the csv file name of the unzipped temp file. This step is important because sometimes the filename changes.
   # So no faster process is possible
   csvf <- list.files("./")[endsWith(list.files("./"), ".csv")]
 
@@ -583,9 +586,10 @@ getOperatingReserveAuctions <- function(date_from, date_to, productId) {
   if(getOption("logging")) pb <- txtProgressBar(min = 0, max = length(auctionIds), style = 3)
 
   # Get the first (initial) auction data and add it to the df_auctions data.frame
-  response_content <- callGETforAuctionResults(auctionIds[1])
-  filename <- paste("temp_auctions_", auctionIds[1], sep = "")
-  df_auctions <- build_df_rl_calls_auctions(response_content, "auctions", filename)
+  filename <- paste("temp_auctions_", auctionIds[1], ".csv", sep = "")
+
+  response_content <- callGETforAuctionResults(auctionIds[1], filename)
+  df_auctions <- build_df_rl_auctions(filename)
 
   # If only one auctionId (= just auction data of one day) is called, then stop and return the initial auction data
   if(length(auctionIds) > 1) {
@@ -596,10 +600,10 @@ getOperatingReserveAuctions <- function(date_from, date_to, productId) {
       # TODO FIX BUG.... SEEMS NOT TO STOP --> BETTER TO ALREADY LIMIT THE AUCTION IDS!!!!
       if(df_auctions$date_to < as.Date(date_to, "%d.%m.%Y")) {
 
-        response_content <- callGETforAuctionResults(auctionIds[j])
         # TODO improve this function --> causes arbitrary errors while writing and reading in the temp csv file
-        filename <- paste("temp_auctions_", auctionIds[j], sep = "")
-        df <- build_df_rl_calls_auctions(response_content, "auctions", filename)
+        filename <- paste("temp_auctions_", auctionIds[j], ".csv", sep = "")
+        response_content <- callGETforAuctionResults(auctionIds[j], filename)
+        df <- build_df_rl_auctions(filename)
 
         df_auctions <- rbind(df_auctions, df)
 
@@ -619,6 +623,7 @@ getOperatingReserveAuctions <- function(date_from, date_to, productId) {
   #invisible(do.call(file.remove, list(list.files("data/auctions", full.names = TRUE))))
 
   if(getOption("logging")) loginfo("getOperatingReserveAuctions - DONE")
+
 
   return(df_auctions)
 
@@ -669,7 +674,7 @@ getOperatingReserveCalls <- function(date_from, date_to, uenb_type, rl_type) {
     # Build up the data.frame
     # TODO improve this function --> causes arbitrary errors while writing and reading in the temp csv file
     filename <- paste("temp_calls_", e, sep = "")
-    d <- build_df_rl_calls_auctions(p, "calls", filename)
+    d <- build_df_rl_calls(p, filename)
 
     df <- rbind(df, d)
 
