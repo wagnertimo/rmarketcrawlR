@@ -178,7 +178,7 @@ plotMWPTimeSeries <- function(data, price, direction, granularity){
          title = paste("Call Probability over time for price", price)) +
     scale_x_datetime(labels = date_format("%H:%M"))
 
-  plot
+  return(plot)
 }
 
 #' Helper function fot the @seealso plotMWPTimeSeries function.
@@ -251,14 +251,18 @@ plotContourCallProb <- function(data, startPrice, endPrice, direction, granulari
   df <- contourCallProbTimeSeries(data, startPrice, endPrice, granularityPrice, granularityTime, numCores)
   df <- filter(df, Direction == direction)
   df$cuttedTime <- as.POSIXct(df$cuttedTime, tz = "Europe/Berlin")
+  from = min(df$cuttedTime)
+  to = max(df$cuttedTime)
+  dir = ifelse(direction == "POS", "positive", "negative")
 
   p2 <- plot_ly(df, x = ~cuttedTime, y = ~Prob, z = ~Price, type = "contour") %>%
     layout(
-      title = "Chart Summary",
-      xaxis = list(title="Date", ticks = df$cuttedTime)
+      title = paste("Call Probability for ", dir, " Secodary Reserve Power depending on Price from ", from, " - ", to, sep=""),
+      xaxis = list(title="Date", ticks = df$cuttedTime),
+      yaxis = list(title="Call Probability")
     )
-  p2
 
+  return(p2)
 }
 
 
@@ -340,9 +344,62 @@ getHighestPriceWithHighestCallProb <- function(data, startPrice, endPrice, direc
 
 
 
+#' @title plotContourHourOfDay
+#'
+#' @description This method plots the average marginal work prices of the input data (@seealso getMarginalWorkPrices) in a color scheme against the daily x axis and hourly y axis
+#'
+#'
+#' @param data - data.frame
+#' @param direction - filters the plot by the direction of the reserve energy. String as "POS" or "NEG"
+#' @param granularityTime - specifies the time steps in minutes over the time period defined by its input data.frame. E.g. 60 leads to hourly time series data.
+#' @param heatMapOrContour - input string "heatmap" declares if a ggplot2 heatmap should be used and "contour" sets a plotly contour plot as the plot function.
+#'
+#' @return plot object
+#'
+#' @examples
+#' marginalworkprices <- getMarginalWorkPrices(needs, calls, auctions)
+#' # Get the data.frame with highest call probability and its highest work price for each time step.
+#' # price range from 0 to 80 with whole steps (0,1,2,...,79,80) and hourly time steps (60 minutes)
+#' getHighestPriceWithHighestCallProb(m, 0, 80, "POS", 1, 60, 2)
+#'
+#' @export
+#'
+plotContourHourOfDay <- function(data, direction, granularityTime, heatMapOrContour){
+  library(ggplot2)
+  library(plotly)
+  library(dplyr)
+  library(data.table)
 
-plotContourHourOfDay <- function(data, price, granularity){
+  f <- select(data, c(DateTime, Tarif, Direction, marginal_work_price))
+  f$cuttedTime <- cut(f$DateTime, breaks = paste(granularityTime, "min", sep = " "))
+  f <- filter(f, Direction == direction)
 
+  f <- setDT(f)[, lapply(.SD, mean), by=.(cuttedTime), .SDcols = "marginal_work_price"]
+  setDF(f)
+  colnames(f) <- c("DateTime", "avg_mwp")
+  f$DateTime <- as.POSIXct(f$DateTime)
+  f$Date <- as.Date(format(f$DateTime, "%Y-%m-%d"))
+  f$Hour <- format(f$DateTime, "%H:%M")
+  f$Hour <- as.factor(f$Hour)
+
+  if(heatMapOrContour == "heatmap") {
+  # Heatmap
+    p <- ggplot(f, aes(Date, Hour)) +
+      geom_tile(aes(fill = avg_mwp), colour = "white") +
+      scale_fill_gradient(low = "white", high = "steelblue")
+  }
+  else {
+    #Contour plot
+    p <- plot_ly(f, x = ~Date, y = ~Hour, z = ~avg_mwp, type = "contour") %>%
+      layout(
+        title = "Chart Summary",
+        xaxis = list(title="Date", ticks = f$Date)
+      )
+  }
+
+
+
+  return(p)
 }
 
 

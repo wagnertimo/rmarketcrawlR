@@ -411,10 +411,12 @@ m.mwp.min = min(m$marginal_work_price)
 m.mwp.max = max(m$marginal_work_price)
 
 
-plotMWPTimeSeries(m, 50, "POS", 240)
+plotMWPTimeSeries(mwp.2016, 60, "POS", 1440)
+
+m3 <- filter(mwp.2016, format(DateTime, "%Y-%m") <= format(as.Date("2016-03-01"), "%Y-%m"))
 
 #'   PLOTLY --> CONTOUR PLOT
-plotContourCallProb(m, 30, 80, "POS", 1, 240, 2)
+plotContourCallProb(mwp.2016, 30, 80, "POS", 1, 1440, 2)
 
 
 r <- getHighestPriceWithHighestCallProb(m, 0, 80, "POS", 1, 60, 2)
@@ -426,11 +428,16 @@ r <- getHighestPriceWithHighestCallProb(m, 0, 80, "POS", 1, 60, 2)
 #'------------------------------------------------------------------------------------------------------
 
 
+
 library(dplyr)
 library(lubridate)
 
 granularity <- 60
 dir <- "POS"
+
+pp <- plotContourHourOfDay(m, "POS", 60, "heatmap")
+pp
+
 
 f <- select(m, c(DateTime, Tarif, Direction, marginal_work_price))
 f$Date <- date(format(f$DateTime, "%Y-%m-%d"))
@@ -440,72 +447,39 @@ f$Date <- date(format(f$DateTime, "%Y-%m-%d"))
 
 
 f$cuttedTime <- cut(f$DateTime, breaks = paste(granularity, "min", sep = " "))
-#d <- split(data, data$cuttedTime)
+f <- filter(f, Direction == dir)
 
 library(data.table)
 ff <- setDT(f)[, lapply(.SD, mean), by=.(cuttedTime), .SDcols = "marginal_work_price"]
 setDF(ff)
 colnames(ff) <- c("DateTime", "avg_mwp")
+ff$DateTime <- as.POSIXct(ff$DateTime)
+ff$Date <- as.Date(format(ff$DateTime, "%Y-%m-%d"))
+ff$Hour <- format(ff$DateTime, "%H:%M")
+ff$Hour <- as.factor(ff$Hour)
 
 
+# Heatmap
+p <- ggplot(ff, aes(Date, Hour)) +
+            geom_tile(aes(fill = avg_mwp), colour = "white") +
+            scale_fill_gradient(low = "white", high = "steelblue")
+p
 
 
-
-
-
-
-df <- contourCallProbTimeSeries(data, startPrice, endPrice, granularityPrice, granularityTime, numCores)
-df <- filter(df, Direction == direction)
-df$cuttedTime <- as.POSIXct(df$cuttedTime, tz = "Europe/Berlin")
-
-p2 <- plot_ly(f, x = ~Date, y = ~Time, z = ~marginal_work_price, type = "contour") %>%
+# Contour plot
+p2 <- plot_ly(ff, x = ~Date, y = ~Hour, z = ~avg_mwp, type = "contour") %>%
   layout(
     title = "Chart Summary",
-    xaxis = list(title="Date", ticks = f$Date)
+    xaxis = list(title="Date", ticks = ff$Date)
   )
 p2
 
 
 
 
-#'------------------------------------------------------------------------------------------------------
-#'
-#' Trying to find Bug with one year(2016) marginal work price calculation --> parallel computation
-#'
-#'------------------------------------------------------------------------------------------------------
-
-
-apc <- splitted.approx.2016[[2]]
-
-apc[is.na(apc)]
-
-apc.1 = filter(apc, DateTime < as.POSIXct("2016-02-15"))
-
-# 01.02.2016 - 21.02.2016 (inklusive) --> 22.02.2016 - 28.02.2016 (inklusive) fails: Fehler in { : task 1 failed - "arguments imply differing number of rows: 0, 1"
-#
-apc.2 = filter(apc, DateTime >= as.POSIXct("2016-02-15") & DateTime < as.POSIXct("2016-02-22"))
-
-apc.3 = filter(apc, DateTime >= as.POSIXct("2016-02-22") & DateTime < as.POSIXct("2016-02-23"))
-
-apc.4 = filter(apc, DateTime >= as.POSIXct("2016-02-29"))
-
-apc.fail = filter(apc, DateTime >= as.POSIXct("2016-02-22") & DateTime < as.POSIXct("2016-02-29"))
-
-aa <- filter(auctions.2016, date_from == as.Date("2016-02-22") & date_to == as.Date("2016-02-28"))
-aa <- filter(auctions.2016, date_from >= as.Date("2016-02-15") & date_from <= as.Date("2016-03-05"))
 
 
 
-
-setLogging(TRUE)
-
-
-
-start.time <- Sys.time()
-m.2 <- calcMarginalWorkPrices(apc, auctions.2016, 2)
-end.time <- Sys.time()
-time.taken <- end.time - start.time
-time.taken
 
 
 

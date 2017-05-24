@@ -34,6 +34,7 @@ Before using this R package, please check that you have installed the following 
 - `doParallel`
 - `foreach`
 - `logging`
+- `plotly`
 
 
 ### Usage
