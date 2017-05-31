@@ -1,0 +1,169 @@
+---
+title: "Analyzing the German Operating Reserve Market"
+output: html_notebook
+fig_width: 6 
+fig_height: 4
+---
+
+
+
+
+## Data Mining Process
+
+For the following analysis we will apply the CRISP-DM process as seen in the image below. First it is important to precisely define the goal and problem set. Therefore one has to understand the business needs and processes involved. Based on that, the necessary data can be acquired and prepared for the model building step.
+
+
+![1. CRISP-DM Process](/Users/Timo/Documents/Studium/2.\ Master/Masterarbeit/\[3\]_Ausarbeitung/LaTex/GER_version/1_graphics/crisp_dm.png){ width=42% }
+
+
+## Busines Understanding
+
+### Determine Business Objectives
+
+First, to understand the purpose and to be able to interpret the results of the analysis, background information of the business domain is provided in the following section. Hereby, the business objectives for the analysis are defined as well as success criterias to meassure the fulfillment of the goals.
+
+#### Background
+
+
+##### Secondary Reserve Power
+
+The German Reserve Market distinguishes between three different product types (19/24 european markets follow this pattern [source](http://www.strommarkttreffen.org/2016-1-22-Ocker-German-Secondary-Balancing-Power-Market.pdf.pdf)):
+
+- **Primary Reserve power (PR)**
+- **Secondary Reserve Power (SR)**
+- **Tertiary Reserve Power (TR)**
+
+Their differences concern the time aspect of power delivery. The image underneath shows the activation duration for full power and the activation time when full power is available. 
+
+
+![2. The 'three-quality' pattern (PR/SR/TR) in the German Reserve Market](/Users/Timo/Documents/Studium/2.\ Master/Masterarbeit/\[3\]_Ausarbeitung/LaTex/GER_version/1_graphics/rl_timeline.png){ width=50% }
+
+The focus of this analysis lies on the Secondary Reserve Power since its activation time is reasonable for common energy suppliers. The market for SR is also the biggest. 
+
+
+##### German Reserve Market
+
+Along with the ... law in 2009 the four german TSOs joined and control the German Reserve Market. Their duty for transparency led to the plattform [regelleistung.net](https://www.regelleistung.net). There all data around the reserve market is published. Also the auction results of the SR. Those auctions are held weeklys from monday till wednesday. The offers account for one week (monday till sunday) and are divided in main period and sub period as well as negative and positive SR. An offer consists of a power price, a work price and the offered SR (negative or positive and its amount in MW). 
+
+
+##### Scenario: Facility 
+
+#### Objective
+
+The overall aim is to give a more precise estimation for the call probability of working prices of the secondary reserve power. Those probabilities can be used as an input paramter for an optimization algorithm which controlls the energy purchasing and selling flow in both primary energy market and reserve energy market. By now the optimal working prices are set to exceed the contribution margin.
+
+
+#### Success Criterias
+
+
+### Assess situation
+
+Satus Quo, Resources, Requirements, Assumptions, Constraints, Terminology
+
+
+
+
+
+### Determine Data mining Goals
+
+Goals, success criterias
+
+
+
+
+
+
+
+### Data Understanding
+
+Next, we will focus on the understanding of the data. As mentioned previously, the main source is the transparent internet platform [regelleistung.net](https://www.regelleistung.net)
+
+#### Collect Data
+
+A R package exists `rmarketcrawlR` accessable via [github](https://github.com/wagnertimo/rmarketcrawlR) which allows crawiling the platform. It also provides additional functions to approximate minutely secondary reserve calls and hence calculate marginal work prices. 
+To get started with the package use `devtools` and its `ìnstall_github()` function.
+
+```{r}
+library(devtools)
+install_github("wagnertimo/rmarketcrawlR")
+```
+
+Than you are able to activate the library and aquire the secondary reserve powerd data. We will focus on the year 2016 and get the results of the auctions, the 15 minute reserve calls and the 4 seconds reserve needs. The values rely to the *Netzregelverbund* , a composition of the four german TSOs. After all the data is crawled from the internet, the marginal work prices can be computed by approximating minutely reserve calls.
+
+```{r}
+# Activate the package in the workspace
+library(rmarketcrawlR)
+
+# Set logging true to be able to comprehend the steps or errors
+setLogging(TRUE)
+
+# Get the data of 2016 for operating needs, calls and auctions of secondary reserve power from the Netzregelverbund
+needs.2016 = getReserveNeeds('01.01.2016', '31.01.2016')
+calls.2016 = getReserveCalls('01.01.2016', '31.01.2016', '6', 'SRL')
+auctions.2016 = getReserveAuctions('01.01.2016', '31.01.2016', '2')
+
+# Calculate the marginal work prices for 2016 with 2 cores --> This step takes a while
+mwp.2016 = getMarginalWorkPrices(needs.2016, calls.2016, auctions.2016, numCores = 2)
+```
+
+
+For further informations about the  `rmarketcrawlR` package read the `README.md` and the documentation.
+
+
+#### Describe Data
+
+
+
+#### Explore Data
+
+##### Auctions Data
+
+Firstly, we will investigate the auction results for the SR in 2016. Since we are interested in the work prices, we are going to plot the average work price bid for each week seperated by main and sub period as well as negative and positive SR.
+
+```{r}
+# filter by direction
+# and get average of the
+library(dplyr)
+auctions.2016.pos <- filter(auctions.2016, Direction == "POS")
+auctions.2016.neg <- filter(auctions.2016, Direction == "NEG")
+
+
+auctions.2016.pos.avg <- aggregate(x = auctions.2016.pos$work_price,
+                                    by = list(auctions.2016.pos$date_from),
+                                    FUN = mean)
+
+auctions.2016.neg.avg <- aggregate(x = auctions.2016.neg$work_price,
+                                   by = list(auctions.2016.neg$date_from),
+                                   FUN = mean)
+
+ggplot(auctions.2016.neg.avg, aes(Group.1, x, group = 1)) +
+  geom_line(colour = "red") +
+  labs(x = "Date", y = "Work Price",
+       title = paste("Time series of average work prices bids for negative SR in 2016")) +
+  scale_x_date(labels = date_format("%Y-%m-%d"))
+
+```
+
+
+
+##### Marginal Work Prices
+
+
+
+```{r}
+
+ggplot(data = data.pos, aes(x=marginal_work_price)) +
+  geom_histogram(aes(y = (..count..)/sum(..count..)), breaks = seq(0, 100, 1),
+                 col="green",
+                 fill="green",
+                 alpha = .5) +
+  labs(title="Histogram for Marginal Work Prices with positive Reserve Power in 2016") +
+  labs(x="Marginal Work Price", y="Count")
+
+```
+
+
+
+
+
+

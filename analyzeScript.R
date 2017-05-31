@@ -418,71 +418,11 @@ m3 <- filter(mwp.2016, format(DateTime, "%Y-%m") <= format(as.Date("2016-03-01")
 #'   PLOTLY --> CONTOUR PLOT
 plotContourCallProb(mwp.2016, 30, 80, "POS", 1, 1440, 2)
 
-
-r <- getHighestPriceWithHighestCallProb(m, 0, 80, "POS", 1, 60, 2)
-
-#'------------------------------------------------------------------------------------------------------
-#
-# Try Carpet-Plot „Abrufwahrscheinlichkeit“:
-#
-#'------------------------------------------------------------------------------------------------------
-
-
-
-library(dplyr)
-library(lubridate)
-
-granularity <- 60
-dir <- "POS"
-
-pp <- plotContourHourOfDay(m, "POS", 60, "heatmap")
+pp <- plotContourHourOfDay(mwp.2016, "POS", 60, "contour")
 pp
 
 
-f <- select(m, c(DateTime, Tarif, Direction, marginal_work_price))
-f$Date <- date(format(f$DateTime, "%Y-%m-%d"))
-# f$Hour <- hour(f$DateTime)
-# f$Minute <- minute(f$DateTime)
-# f$Time <- format(f$DateTime, "%H:%M:%S")
-
-
-f$cuttedTime <- cut(f$DateTime, breaks = paste(granularity, "min", sep = " "))
-f <- filter(f, Direction == dir)
-
-library(data.table)
-ff <- setDT(f)[, lapply(.SD, mean), by=.(cuttedTime), .SDcols = "marginal_work_price"]
-setDF(ff)
-colnames(ff) <- c("DateTime", "avg_mwp")
-ff$DateTime <- as.POSIXct(ff$DateTime)
-ff$Date <- as.Date(format(ff$DateTime, "%Y-%m-%d"))
-ff$Hour <- format(ff$DateTime, "%H:%M")
-ff$Hour <- as.factor(ff$Hour)
-
-
-# Heatmap
-p <- ggplot(ff, aes(Date, Hour)) +
-            geom_tile(aes(fill = avg_mwp), colour = "white") +
-            scale_fill_gradient(low = "white", high = "steelblue")
-p
-
-
-# Contour plot
-p2 <- plot_ly(ff, x = ~Date, y = ~Hour, z = ~avg_mwp, type = "contour") %>%
-  layout(
-    title = "Chart Summary",
-    xaxis = list(title="Date", ticks = ff$Date)
-  )
-p2
-
-
-
-
-
-
-
-
-
-
+r <- getHighestPriceWithHighestCallProb(m, 0, 80, "POS", 1, 60, 2)
 
 
 

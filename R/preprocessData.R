@@ -737,7 +737,7 @@ preprocessOperatingReserveNeeds <- function(df.needs) {
   # Not sure when and if needed. This variable is redundant
   # df.needs$Direction <- ifelse(df.needs$MW < 0, "NEG", "POS")
 
-  drops <- c("Date", "Time", "Type")
+  drops <- c("Date", "Time")
 
   if(getOption("logging")) loginfo("preprocessOperatingReserveNeeds - DONE")
 

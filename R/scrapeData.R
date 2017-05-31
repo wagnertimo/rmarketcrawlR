@@ -411,9 +411,14 @@ scrape_rl_need_month <- function(date_code) {
   file.remove(csvf)
 
   # Since there are no headers, include appropriate header names
-  colnames(dft) <- c("Date", "Time", "Type", "MW")
-
-
+  # CAUTION!! --> FOR 2011 and below, NO Type variable only 3 columns
+  if(as.numeric(date_code) <= 201112) {
+    colnames(dft) <- c("Date", "Time", "MW")
+    #return(dft)
+  } else {
+    colnames(dft) <- c("Date", "Time", "Type", "MW")
+    dft <- dft[ , !(names(dft) %in% c("Type"))]
+  }
 
   return(dft)
 
