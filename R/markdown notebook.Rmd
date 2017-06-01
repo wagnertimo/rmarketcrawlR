@@ -122,25 +122,12 @@ Firstly, we will investigate the auction results for the SR in 2016. Since we ar
 
 ```{r}
 # filter by direction
-# and get average of the
-library(dplyr)
-auctions.2016.pos <- filter(auctions.2016, Direction == "POS")
-auctions.2016.neg <- filter(auctions.2016, Direction == "NEG")
-
-
-auctions.2016.pos.avg <- aggregate(x = auctions.2016.pos$work_price,
-                                    by = list(auctions.2016.pos$date_from),
-                                    FUN = mean)
-
-auctions.2016.neg.avg <- aggregate(x = auctions.2016.neg$work_price,
-                                   by = list(auctions.2016.neg$date_from),
-                                   FUN = mean)
-
-ggplot(auctions.2016.neg.avg, aes(Group.1, x, group = 1)) +
-  geom_line(colour = "red") +
-  labs(x = "Date", y = "Work Price",
-       title = paste("Time series of average work prices bids for negative SR in 2016")) +
-  scale_x_date(labels = date_format("%Y-%m-%d"))
+# and get the average of the work price offers
+auctions.2016 %>%
+  group_by_(.dots = c("date_from", "Direction")) %>%
+  summarise(avg = mean(work_price)) %>%
+  ggplot(aes(x = date_from, y = avg, colour = Direction)) + 
+        geom_line()
 
 ```
 

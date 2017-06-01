@@ -166,7 +166,7 @@ build_df_rl_calls <- function(response_content, fileName) {
   # Write a temporary csv file from the char variable
   write.csv(response_content, file = fileName, eol = "\n")
 
-  if(getOption("logging")) loginfo("build_rl_calls_auctions - Called for Reserve Calls. Read in file")
+  if(getOption("logging")) loginfo("build_df_rl_calls - Called for Reserve Calls. Read in file")
 
   # Read in the temporary csv file
   #
@@ -312,26 +312,42 @@ callGETforAuctionResults <- function(auctionId, filename) {
 build_df_rl_auctions <- function(fileName) {
   library(logging)
 
-  if(getOption("logging")) loginfo(paste("build_rl_calls_auctions - Read in file", fileName))
+  if(getOption("logging")) loginfo(paste("build_df_rl_auctions - Read in file", fileName))
 
-  df <- read.csv(file = fileName,
-                 header = TRUE,
-                 sep = ";",
-                 dec = ",",
-                 na.strings = c("","-"),
-                 quote = "",
-                 skip = 1
-  )
+  # Init result data.frame
+  df <- data.frame()
+  # Use try catch block to skip empty csv files
+  df <- tryCatch({
+    read.csv(file = fileName,
+             header = FALSE,
+             sep = ";",
+             dec = ",",
+             na.strings = c("","-"),
+             quote = "",
+             skip=1
+    )
+  }, error = function(err) {
+    # error handler picks up where error was generated
+    if(getOption("logging")) logerror(paste("build_df_rl_auctions - Read file <", fileName, "> didn't work! --> Error: ", err))
+  })
 
-  # Skip last column --> this column is strangely added. Dont know why
-  df <- df[,1:9]
-  colnames(df) <- c("date_from","date_to","product_name","power_price","work_price","ap_payment_direction","offered_power_MW","called_power_MW","offers_AT")
-  # Delete last row -> there is an additional row with a parenthesis and NAs
-  # df <- df[1:nrow(df)-1,]
 
 
-  df$date_to <- as.Date(df$date_to, "%d.%m.%Y")
-  df$date_from <- as.Date(df$date_from, "%d.%m.%Y")
+  # Check if csv file could be read and hence df is not empty
+  if(!is.null(df)) {
+
+    # Skip last column --> this column is strangely added. Dont know why
+    df <- df[,1:9]
+    colnames(df) <- c("date_from","date_to","product_name","power_price","work_price","ap_payment_direction","offered_power_MW","called_power_MW","offers_AT")
+    # Delete last row -> there is an additional row with a parenthesis and NAs
+    # df <- df[1:nrow(df)-1,]
+
+
+    df$date_to <- as.Date(df$date_to, "%d.%m.%Y")
+    df$date_from <- as.Date(df$date_from, "%d.%m.%Y")
+
+  }
+
 
 
   # DELETE temporary files

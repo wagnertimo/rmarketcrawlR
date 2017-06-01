@@ -877,7 +877,8 @@ preprocessOperatingReserveAuctions <- function(df.auctions) {
   df.auctions$Direction <- rapply(strsplit(as.character(df.auctions$product_name), "_"), function(x) x[1])
 
   # Set the direction/sign of the work price --> ANBIETER_AN_NETZ signals a negative work price
-  df.auctions$work_price <- ifelse(df.auctions$ap_payment_direction == "ANBIETER_AN_NETZ", -df.auctions$work_price, df.auctions$work_price)
+  # CAUTION!!! till last week of (including) 2014-12-29 the declaration is "Anbieter an Netz" then from 2015-01-05 "ANBIETER_AN_NETZ"
+  df.auctions$work_price <- ifelse(df.auctions$ap_payment_direction == "ANBIETER_AN_NETZ" | df.auctions$ap_payment_direction == "Anbieter an Netz", -df.auctions$work_price, df.auctions$work_price)
 
 
   # ap_payment_direction

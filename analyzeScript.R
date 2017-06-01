@@ -411,22 +411,40 @@ m.mwp.min = min(m$marginal_work_price)
 m.mwp.max = max(m$marginal_work_price)
 
 
-plotMWPTimeSeries(mwp.2016, 60, "POS", 1440)
+plotMWPTimeSeries(mwp.2016, 20, "POS", 1440)
 
 m3 <- filter(mwp.2016, format(DateTime, "%Y-%m") <= format(as.Date("2016-03-01"), "%Y-%m"))
 
 #'   PLOTLY --> CONTOUR PLOT
-plotContourCallProb(mwp.2016, 30, 80, "POS", 1, 1440, 2)
+week <- filter(mwp.2016, as.Date(format(DateTime, "%Y-%m-%d")) >= as.Date("2016-06-01") & as.Date(format(DateTime, "%Y-%m-%d")) <= as.Date("2016-06-07"))
+
+
+plotContourCallProb(week, 30, 80, "POS", 1, 60, 2)
 
 pp <- plotContourHourOfDay(mwp.2016, "POS", 60, "contour")
 pp
 
-
 r <- getHighestPriceWithHighestCallProb(m, 0, 80, "POS", 1, 60, 2)
 
+#'
+#' TODO Plot hourly total MW power of minutely calls
+#'
+week$cuttedTime <- cut(week$DateTime, breaks = paste("60", "min", sep = " "))
+week$cuttedTime <- as.POSIXct(week$cuttedTime, tz = "Europe/Berlin")
+# Get the number of work pries which are less than the given price and based on the conditioned subset
+library(dplyr)
+library(tidyr)
 
+d <- week %>%
+  group_by_(.dots = c("cuttedTime", "Direction")) %>%
+  summarise(totalMW = sum(approx_1min_call)) %>%
+  spread(Direction, totalMW) %>%
+  ggplot(aes(cuttedTime, POS)) +
+        geom_line(colour = "blue") +
+        labs(x = "Time", y = "Positive Secondary Reserve Calls in MW", title = paste("Hourly Positive Secondary Reserve Calls in MW")) +
+        scale_x_datetime(labels = date_format("%Y-%m-%d %H:%M"))
 
-
+d
 
 
 

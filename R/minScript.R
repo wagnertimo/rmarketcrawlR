@@ -125,6 +125,7 @@ getReserveCalls <- function(startDate, endDate, uenb, rl) {
 #' @description This function is the production method of @seealso getOperatingReserveAuctions in the @seealso scrapeData.R script. It is without console prints for faster computation and several steps are combined.
 #' This main function retrieves the operating reserve auction results from \url{https://www.regelleistung.net/ext/tender/}.
 #' The data contains all auctions from a given start date till an end date. Be aware of the weekly data and take care of the latest week.
+#' CAUTION: IF YOUR START WEEK CONTAINS NO AUCTION RESULTS, THIS COULD LEAD TO AN ERROR! --> BUT NORMALLY THERE SHOULD BE NO START WEEK WITH ZERO ENTRIES!
 #' Variables in the returned data.frame:  - power_price (numeric). The signed power price of the bid. Point as decimal delimiter.
 #'                                        - work_price (numeric). The signed work price of the bid. Point as decimal delimiter. There are also negative prices.
 #'                                        - offered_power_MW (numeric). The offered power in MW. Point as decimal delimiter. 5 as the minimal bid. This will be changed someday to smaller increments.

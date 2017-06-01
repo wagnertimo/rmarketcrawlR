@@ -1,0 +1,130 @@
+#'
+#' Script to build models and analysis (plots, tables)
+#'
+
+
+# Auctions Data
+
+# filter by direction
+# and get average of the
+library(dplyr)
+
+auctions.2016 %>%
+  group_by_(.dots = c("date_from", "Direction")) %>%
+  summarise(avg = mean(work_price)) %>%
+  ggplot(aes(x = date_from, y = avg, colour = Direction)) +
+  geom_line()
+
+
+
+
+
+
+
+
+#' Look at Marginal Work Prices - Descriptive Statistics
+library(ggplot2)
+library(dplyr)
+
+mwp.2016.pos <- filter(mwp.2016, Direction == "POS")
+mwp.2016.neg <- filter(mwp.2016, Direction == "NEG")
+
+
+summary(mwp.2016.pos$marginal_work_price)
+# Min.  1st Qu.   Median     Mean  3rd Qu.     Max.
+# 29.80    37.50    44.54    59.80    58.50 20000.00
+#
+# --> For outliers 1.5x IQR +(-) 3rd(1st) Quartile --> IQR(mwp.2016.pos$marginal_work_price) = 21
+# --> Upper level: mwp of 90, and lower level mwp of 6
+bench.pos.pos <- as.numeric(quantile(mwp.2016.pos$marginal_work_price, probs = c(0.75))) + 1.5*IQR(mwp.2016.pos$marginal_work_price)
+bench.pos.neg <- as.numeric(quantile(mwp.2016.pos$marginal_work_price, probs = c(0.25))) - 1.5*IQR(mwp.2016.pos$marginal_work_price)
+
+
+summary(mwp.2016.neg$marginal_work_price)
+# Min.  1st Qu.   Median     Mean  3rd Qu.     Max.
+# -22.10    -2.10     1.90    29.57     9.70 74400.00
+#
+# --> For outliers 1.5x IQR +(-) 3rd(1st) Quartile --> IQR(mwp.2016.pos$marginal_work_price) = 21
+# --> Upper level: mwp of 27.4, and lower level mwp of -19.8
+bench.neg.pos <- as.numeric(quantile(mwp.2016.neg$marginal_work_price, probs = c(0.75))) + 1.5*IQR(mwp.2016.neg$marginal_work_price)
+bench.neg.neg <- as.numeric(quantile(mwp.2016.neg$marginal_work_price, probs = c(0.25))) - 1.5*IQR(mwp.2016.neg$marginal_work_price)
+
+
+# Visual outlier detection via boxplot
+boxplot(mwp.2016.pos[mwp.2016.pos$marginal_work_price<81,]$marginal_work_price, horizontal = T)
+boxplot(mwp.2016.neg[mwp.2016.neg$marginal_work_price<14 & mwp.2016.neg$marginal_work_price>-14,]$marginal_work_price, horizontal = T)
+
+
+# trim away outliers
+data.pos <- mwp.2016.pos[mwp.2016.pos$marginal_work_price<=90 & mwp.2016.pos$marginal_work_price>=6,]
+# > nrow(data.pos)/nrow(mwp.2016.pos)
+# [1] 0.9464051
+#
+#
+
+data.neg <- mwp.2016.neg[mwp.2016.neg$marginal_work_price<=27.4 & mwp.2016.neg$marginal_work_price>=-19.8,]
+# > nrow(data.neg)/nrow(mwp.2016.neg)
+# [1] 0.876775
+#
+#
+
+
+# show distribution of marginal work prices --> right skewed
+ggplot(data = data.pos, aes(x=marginal_work_price)) +
+  geom_histogram(aes(y = (..count..)/sum(..count..)), breaks = seq(0, 100, 1),
+                 col="green",
+                 fill="green",
+                 alpha = .5) +
+  labs(title="Histogram for Marginal Work Prices with positive Reserve Power in 2016") +
+  labs(x="Marginal Work Price", y="Count")
+
+# Violin Plot
+ggplot(data.pos, aes(x=Direction, y=marginal_work_price)) +
+  geom_violin(trim=F, fill="green", alpha = 0.7) +
+  geom_boxplot(width=0.1, fill="grey")
+
+# transformation of skewed data
+
+
+str(mwp.2016)
+
+ggplot(mwp.2016, aes(x = Direction, y = marginal_work_price, fill = Tarif)) +
+  geom_boxplot(alpha=0.75,
+               outlier.colour = "#1F3552", outlier.shape = 20,
+               notch = TRUE) +
+  scale_y_log10(name="Marginal Work Prices \n in log10") +
+  ggtitle("Boxplot of Marginal Work Prices in 2016")
+
+
+ggplot(mwp.2016, aes(x=Direction, y=marginal_work_price)) +
+  geom_violin(trim=F)
+
+
+needs.2014 = getReserveNeeds('01.01.2014', '31.12.2014')
+calls.2014 = getReserveCalls('01.01.2014', '31.12.2014', '6', 'SRL')
+auctions.2014 = getReserveAuctions('01.01.2014', '31.12.2014', '2')
+
+
+needs.2013 = getReserveNeeds('01.01.2013', '31.12.2013')
+calls.2013 = getReserveCalls('01.01.2013', '31.12.2013', '6', 'SRL')
+auctions.2013 = getReserveAuctions('01.01.2013', '31.12.2013', '2')
+
+
+needs.2012 = getReserveNeeds('01.01.2012', '31.12.2012')
+calls.2012 = getReserveCalls('01.01.2012', '31.12.2012', '6', 'SRL')
+auctions.2012 = getReserveAuctions('01.01.2012', '31.12.2012', '2')
+
+
+needs.2011 = getReserveNeeds('01.07.2011', '31.12.2011')
+calls.2011 = getReserveCalls('01.07.2011', '31.12.2011', '6', 'SRL')
+auctions.2011 = getReserveAuctions('01.07.2011', '31.12.2011', '2')
+
+
+approx.calls.2015 = approximateCallsInRecursion(needs.2015,calls.2015)
+approx.calls.2014 = approximateCallsInRecursion(needs.2014,calls.2014)
+approx.calls.2013 = approximateCallsInRecursion(needs.2013,calls.2013)
+approx.calls.2012 = approximateCallsInRecursion(needs.2012,calls.2012)
+approx.calls.2011 = approximateCallsInRecursion(needs.2011,calls.2011)
+
+
+
