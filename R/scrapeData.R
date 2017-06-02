@@ -262,6 +262,7 @@ getAuctionIds <- function(response, date_from, date_to) {
   library(XML)
 
   # Calculate the time difference in weeks of the given start and end date. This value sets the needed amount of auctionIds from the response since they are weekly auctions
+  # CAUTION!! IN 2015-03-20 THERE IS A DAILY AUCTION --> THEN THE WEEK DIFFERENCE IS TOO LESS
   tdiff <- floor(as.double(difftime(as.Date(date_to, format = "%d.%m.%Y") ,as.Date(date_from, format = "%d.%m.%Y") , units = c("weeks")))) + 1
 
   parsedHtml <- htmlParse(content(response, "text"))
@@ -269,20 +270,27 @@ getAuctionIds <- function(response, date_from, date_to) {
   # Xpath exppression to retrieve all links in the results (tender) table
   # There are three links in all table column containing the auctionId -> just get a unique/distinct link (contains 'details')
   link_elements <- xpathSApply(parsedHtml, "id('tender-table')/tbody/tr/td/a[contains(@href,'details')]/@href")
+  endWeek_elements <- xpathSApply(parsedHtml, "id('tender-table')/tbody/tr/td/span[2]/text()",saveXML)
 
   auctionIds <- c()
+  i <- 1
+  # Go through a while loop and stop when an endWeek element occurs which is greater or equal to the date_to variable. Then the end is reached
+  repeat{
 
-  # Stop when last weekly auction specified by the given end date is reached. No need to parse all elements (result lasts till current/latest date)
-  for(i in 1:tdiff) {
-
+    #statements...
     # Split the link on the slashes '/' and take only the last element, this is the auctionId
     splitstring <- strsplit(link_elements[i], "/")[[1]]
     auctionId <- splitstring[length(splitstring)]
 
     auctionIds <- append(auctionIds, auctionId)
+
+    if(as.Date(endWeek_elements[i], "%d.%m.%Y") >= as.Date(date_to, "%d.%m.%Y")){
+      break
+    }
+    i <- i + 1
   }
 
-  print(paste("Auction IDs: ", auctionIds))
+  #print(paste("Auction IDs: ", auctionIds))
 
   return(auctionIds)
 

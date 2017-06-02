@@ -180,8 +180,10 @@ getAuctionDates <- function(startDate, endDate){
   # end should be sundady ---> if not shift date FORWARDS to sunday
   ediffforward <- 7 - (wday(e) - 1) # if diff is 7 than it is the correct sunday
 
-  start <- if(s - sdiffback >= 0) s - sdiffback else s - 6
+  start <- if(sdiffback >= 0) s - sdiffback else s - 6
   end <- if(ediffforward == 7) e else e + ediffforward
+
+  if(getOption("logging")) loginfo(paste("getAuctionDates - New auction dates, start: ", start, " | end: ", end))
 
   rlist <- list(start = as.character(format(start, "%d.%m.%Y")), end = as.character(format(end, "%d.%m.%Y")))
   return(rlist)
