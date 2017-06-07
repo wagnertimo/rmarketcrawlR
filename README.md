@@ -66,6 +66,29 @@ auctions = getReserveAuctions('01.01.2016', '10.01.2016', '2')
 
 ```
 
+#### Impute missing calls
+
+For 2013, 2012 and 2011 some negative and positive secondary reserve power data is missing. To replace (impute) those `NA` values, the call data of the four TSOs (50Hz, TenneT, Amprion and TransnetBW) is used. The small code example below shows the procedure and the imputation function `imputeMissingCallsWithTSO`. It takes as arguments the data.frame of calls with missing values (e.g. 2013) and a list of the call data.frames of the TSOs.
+
+```r
+# Get call data with missing values
+calls = getReserveCalls('01.01.2013', '31.12.2013', '6', 'SRL')
+
+# 50Hz (4)
+calls.2013.4 = getReserveCalls('01.01.2013', '31.12.2013', '4', 'SRL')
+# TenneT (2)
+calls.2013.2 = getReserveCalls('01.01.2013', '31.12.2013', '2', 'SRL')
+# Amprion (3)
+calls.2013.3 = getReserveCalls('01.01.2013', '31.12.2013', '3', 'SRL')
+# TransnetBW (1)
+calls.2013.1 = getReserveCalls('01.01.2013', '31.12.2013', '1', 'SRL')
+# Build the tso list
+tso.list <- list(calls.2013.1,calls.2013.2,calls.2013.3,calls.2013.4)
+
+# Impute the data
+imputed.calls <- imputeMissingCallsWithTSO(calls, tso.list)
+```
+
 #### Get the approximated 1min Call data and the 1min marginal work prices
 
 The approximation of the operating reserve calls in a higher resolution (1 min instead of 15min) is computed by the function `getOneMinuteCalls(needs, calls)` and indirectly by the function `getMarginalWorkPrices(needs, calls, auctions, numCores)`. They consider some special cases which can occur. The case of **homogenity** where all averaged 1min reserve needs are homogenly positive (or negative) within a 15min section. This leads to a 15min average need for negative (positive) power of 0. But in the case that the 15min calls of negative (positive) power is not 0, the 1min needs have to be changed. Its smallest absolute value gets the negative (positive) value to fulfill the 15min average call in 1min. Hereby, cases can occur where the newly modified data points cross the zero level; they change their sign (case of **CrossingZero**). Hence the overall 15min average is not equal to the expected 15min call average. Therefore a recursive modification changes iteratively the data points till the averages are equal.

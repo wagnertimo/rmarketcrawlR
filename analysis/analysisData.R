@@ -207,91 +207,6 @@ intersect(missingdates.2012, missingdates.2011) # --> different missing dates
 #
 # Impute missing calls with TSO data
 #
-
-
-# Build for 2013,2012,2011 data.frames with TSO data of the missing value dates --> then impute TSO missing values
-
-library(dplyr)
-
-a <- filter(calls.2011.1, DateTime %in% missingdates.2011)
-b <- filter(calls.2011.2, DateTime %in% missingdates.2011)
-c <- filter(calls.2011.3, DateTime %in% missingdates.2011)
-d <- filter(calls.2011.4, DateTime %in% missingdates.2011) # --> has all values
-
-rr <- list(a,b,c,d) %>%
-  Reduce(function(dtf1,dtf2) full_join(dtf1,dtf2,by="DateTime"), .)
-
-# Rename the result columns and drop some useless columns
-colnames(rr) <- c("DateTime", "neg_MW.1", "pos_MW.1", "TZ.1","neg_MW.2", "pos_MW.2", "TZ.1", "neg_MW.3", "pos_MW.3","TZ.3", "neg_MW.4", "pos_MW.4", "TZ")
-rr <- rr[, !(names(rr) %in% c("TZ.1", "TZ.2", "TZ.3"))]
-
-# count unique na per rows --> if only 2 then only only one TSO has a missing value --> 2013 = always one TSO with NA // 2012 = always one TSO with NA // 2011 = 1 and once 3 TSO with NA
-unique(apply(rr, 1, function(x) sum(is.na(x))))
-
-# subset rr into two data.frames with negative and positive MW
-rrPos <- rr[, c("DateTime", "TZ", "pos_MW.1", "pos_MW.2", "pos_MW.3", "pos_MW.4")]
-rrNeg <- rr[, c("DateTime", "TZ", "neg_MW.1", "neg_MW.2", "neg_MW.3", "neg_MW.4")]
-# Then melt each subset into long data
-library(reshape2)
-rrPos <- melt(rrPos, id.vars=c("DateTime", "TZ"))
-rrNeg <- melt(rrNeg, id.vars=c("DateTime", "TZ"))
-# Sort by Date to have chronological order and not order by TSO
-rrPos <- arrange(rrPos, DateTime)
-rrNeg <- arrange(rrNeg, DateTime)
-# Rename columns for better access
-colnames(rrPos) <- c("DateTime", "TZ", "TSO", "pos_MW")
-colnames(rrNeg) <- c("DateTime", "TZ", "TSO", "neg_MW")
-# Modify the TSO variable --> just give each TSO a number from 1 - 4
-rrPos$TSO <- substr(rrPos$TSO, nchar(as.character(rrPos$TSO)), nchar(as.character(rrPos$TSO)))
-rrNeg$TSO <- substr(rrNeg$TSO, nchar(as.character(rrNeg$TSO)), nchar(as.character(rrNeg$TSO)))
-
-# Build a unified data.frame
-allTSO.2011 <- cbind(rrNeg, pos_MW = rrPos$pos_MW)
-test <- allTSO.2011
-# sum neg_MW and pos_MW of the 4 TSO by each DateTime
-test = aggregate(cbind(neg_MW, pos_MW) ~ DateTime, data = test, sum, na.rm = TRUE)
-
-
-# Clean up variable environment
-rm(a,b,c,d,rr,rrPos,rrNeg)
-
-
-# Impute TSO missing values
-
-# Get dates and TSO of na
-allTSO.2013[is.na(allTSO.2013$neg_MW), c("DateTime","TZ","TSO")]
-allTSO.2012
-allTSO.2011
-
-test <- calls.2013.2
-
-test[is.na(test$neg_MW), ]
-test <- imputeMissingValueOfTSO(test)
-
-list.tso.2013 <- list(calls.2013.1,calls.2013.2,calls.2013.3,calls.2013.4)
-list.tso.2012 <- list(calls.2012.1,calls.2012.2,calls.2012.3,calls.2012.4)
-list.tso.2011 <- list(calls.2011.1,calls.2011.2,calls.2011.3,calls.2011.4)
-
-test <- imputeCalls(calls.2013, list.tso.2013)
-test <- imputeCalls(calls.2012, list.tso.2012)
-test <- imputeCalls(calls.2011, list.tso.2011)
-
-
-list.tso.2013 <- impute(list.tso.2013)
-
-tso <- 4
-calls.2013[is.na(calls.2013$neg_MW), ]
-
-
-calls.2013[calls.2013$DateTime %in% missingdates.2013, "neg_MW"] <- 0
-
-test$neg_MW
-
-
-
-#
-# Impute missing calls with TSO data
-#
 imputed.calls.2013 <- imputeMissingCallsWithTSO(calls.2013, list.tso.2013)
 imputed.calls.2012 <- imputeMissingCallsWithTSO(calls.2012, list.tso.2012)
 imputed.calls.2011 <- imputeMissingCallsWithTSO(calls.2011, list.tso.2011)
@@ -303,26 +218,6 @@ all.equal(imputed.calls.2011,calls.2011)
 imputed.calls.2013[is.na(imputed.calls.2013$neg_MW), ]
 imputed.calls.2012[is.na(imputed.calls.2012$neg_MW), ]
 imputed.calls.2011[is.na(imputed.calls.2011$neg_MW), ]
-
-
-
-# Aggregate needs to 15min avg as approx for 15min call
-test <- aggregateXminAVGMW(needs.2011, 15)
-# Cut 1min avg needs into 15min for join operation
-test <- needs.2011
-test$cuttedTime <- cut(test$DateTime, breaks = paste("15", "min", sep = " "))
-test$cuttedTime <- as.POSIXct(test$cuttedTime, tz = "Europe/Berlin")
-
-names(test)[names(test)=="MW"] <- "avg_1min_MW"
-
-t.2011.pos <- get15minAVGOf1minAVG(test, "POS")
-t.2011.neg <- get15minAVGOf1minAVG(test, "NEG")
-library(dplyr)
-t.2011 <- full_join(t.2011.neg, t.2011.pos)
-t.2011 <- merge(t.2011.pos, t.2011.neg, all = TRUE)
-
-t.2011[is.na(t.2011)] <- 0
-
 
 
 
