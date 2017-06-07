@@ -41,12 +41,18 @@ Their differences concern the time aspect of power delivery. The image underneat
 The focus of this analysis lies on the Secondary Reserve Power since its activation time is reasonable for common energy suppliers. The market for SR is also the biggest. 
 
 
+
+
 ##### German Reserve Market
 
 Along with the ... law in 2009 the four german TSOs joined and control the German Reserve Market. Their duty for transparency led to the plattform [regelleistung.net](https://www.regelleistung.net). There all data around the reserve market is published. Also the auction results of the SR. Those auctions are held weeklys from monday till wednesday. The offers account for one week (monday till sunday) and are divided in main period and sub period as well as negative and positive SR. An offer consists of a power price, a work price and the offered SR (negative or positive and its amount in MW). 
 
 
+
+
 ##### Scenario: Facility 
+
+
 
 #### Objective
 
@@ -54,6 +60,8 @@ The overall aim is to give a more precise estimation for the call probability of
 
 
 #### Success Criterias
+
+
 
 
 ### Assess situation
@@ -64,9 +72,13 @@ Satus Quo, Resources, Requirements, Assumptions, Constraints, Terminology
 
 
 
+
+
 ### Determine Data mining Goals
 
 Goals, success criterias
+
+
 
 
 
@@ -110,9 +122,41 @@ mwp.2016 = getMarginalWorkPrices(needs.2016, calls.2016, auctions.2016, numCores
 For further informations about the  `rmarketcrawlR` package read the `README.md` and the documentation.
 
 
+
+
 #### Describe Data
 
-Missing values for 15 minute calls of SR of the *Netzregelverbund* in 2013, 2012 and 2011:
+##### Data Sets and Features
+
+**WHY NETZREGELVERBUND DATA???**
+
+The whole time period: `2011-07-01 00:00:00 CEST` till `2016-12-31 23:59:00 CET`. These are 5 and a half years of data.
+
+
+##### Approximation of minutely calls
+
+
+
+
+##### Calculation of marginal work prices and call probabilities
+
+
+
+
+
+
+##### Missing Values
+
+Missing values occur for 15 minute calls of negative and positive SR of the *Netzregelverbund* in 2013, 2012 and 2011:
+
+- **2013:** There are 37 observations in 2013 with missing values. This is around 0.11%. The main date is `2013-12-04`. At `15:45` till the end of the day values for negative and positive SR calls are missing. Then there are four other days (`2013-04-03`, `2013-06-04`, `2013-09-18` and `2013-12-07`) with one observation each.
+
+- **2012:** There are 38 observations in 2012 with missing values. This is around 0.11%. The main dates are `2012-02-26` and `2012-10-27`. with missing values for negative and positive SR calls in the evening and morning hours. Then there are two other days (`2012-08-05`, `2012-09-09`) with one observation each.
+
+- **2011:** There are 235 observations in 2011 (only half the year, starting from `2011-07-01`) with missing values. This is around 1.33%. The dates are too much to list them.
+
+
+
 ```{r}
 # FOR 2013
 nrow(calls.2013[is.na(calls.2013$neg_MW), ])
@@ -170,6 +214,26 @@ calls.2011[is.na(calls.2011$neg_MW), "DateTime"]
 
 ```
 
+
+**Impute Missing Values**
+
+For time series analysis on such a data set, it is not appropriate to leave them out. The amount of proportion is quite less, but nevertheless it is better to approximate the missing values. There would be three different approaches:
+
+- **Use the data of other years:** Since there is no intersection with the missing dates, it is possible to impute the missing values with the values of the year before. Only problem is that for 2011 (also for february 2012) no data of 2010 (february 2011) is available. Another option would be to take an average of the *future* data of the years after.
+- **Use reserve needs:** It is also possible to use the 4sec reserve needs which are also used for the minutely approximation of the calls.
+- **Use TSO data:** On the given date of missing values, some TSO show SR call data. So one approach would be to sum up those observations and use it to impute the missing values for the *Netzregelverbund*. 
+
+
+We will go for the latter. Taking the reserve needs would cause a big deviation, since the needs and actual calls differ remarkably. Averaging future years would lead to missinterpretations. Using TSO data seems natural because the summation of the four yield into the *Netzregelverbund* variable. It is also noticed that only one (only for 2011 at `2011-10-30 23:00:00` for one hour 3 TSO lack with data) TSO has missing values for the dates of interest which should keep the error small. This leaves the question how to impute the missing value of that TSO. A simple approach would be to take the value of the day before(this is possible because the first observation has no missing value(`2011-07-01`)). 
+
+```r
+# TODO!! --> Compare the deviations of both approaches in comparison with the 15min calls of the Netzregelverbund.
+# 1. Calculate first approach (Average of TSOs) and compute the deviations between data of TSOs and *Netzregelverund*
+# 2. Calculate the deviations of 15min avg 4sec needs with 15min calls
+# 3. Compute the 15min calls out of the 4sec needs
+
+
+```
 
 #### Explore Data
 

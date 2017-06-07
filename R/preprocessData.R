@@ -680,6 +680,150 @@ preProcessOperatingReserveCalls <- function(df.calls) {
 
 
 
+
+#' @title imputeMissingCallsWithTSO
+#'
+#' @description This method replaces missing values for 15 minute calls. It uses the data of the 4 TSOs. The sum equals the values of the Netzregelverbund. If also for the TSO data is missing than it uses the data of the day before.
+#' NOTE: If there is a missing negative value there is also a missing positive value (Checked for 2013,2012 and 2011)
+#'
+#' @param calls - the call data.frame with missing values which has to be imputed
+#' @param tso.list - list of the call data of the 4 tso companies (data must be same time period as call data).
+#'
+#' @return the imputed call data.frame
+#'
+#' @examples
+#' # Get call data with missing values
+#' calls = getReserveCalls('01.01.2013', '31.12.2013', '6', 'SRL')
+#'
+#' # 50Hz (4)
+#' calls.2013.4 = getReserveCalls('01.01.2013', '31.12.2013', '4', 'SRL')
+#' # TenneT (2)
+#' calls.2013.2 = getReserveCalls('01.01.2013', '31.12.2013', '2', 'SRL')
+#' # Amprion (3)
+#' calls.2013.3 = getReserveCalls('01.01.2013', '31.12.2013', '3', 'SRL')
+#' # TransnetBW (1)
+#' calls.2013.1 = getReserveCalls('01.01.2013', '31.12.2013', '1', 'SRL')
+#' # Build the tso list
+#' tso.list <- list(calls.2013.1,calls.2013.2,calls.2013.3,calls.2013.4)
+#'
+#' # Impute the data
+#' imputed.calls <- imputeMissingCallsWithTSO(calls, tso.list)
+#'
+#' @export
+#'
+imputeMissingCallsWithTSO <- function(calls, tso.list) {
+  library(logging)
+  library(dplyr)
+  library(reshape2)
+
+
+  if(getOption("logging")) loginfo("imputeMissingCallsWithTSO - Impute missing values for calls")
+
+  # Get the dates which contain the missing values // if there is a missing negative value there is also a missing positive value (Checked for 2013,2012 and 2011)
+  missingdates <- calls[is.na(calls$neg_MW), "DateTime"]
+  # Impute NA of tso data (if they have NAs) with they value of the day before
+  imputed.tso.list <- impute(tso.list)
+
+  # Sum up the values of the 4 TSOs --> this leads to the value of the Netzregelverbund
+  m <- sumUp(imputed.tso.list,missingdates)
+
+  # Replace missing values with the summed TSO values
+  calls[calls$DateTime %in% missingdates, "neg_MW"] <- m$neg_MW
+  calls[calls$DateTime %in% missingdates, "pos_MW"] <- m$pos_MW
+
+  if(getOption("logging")) loginfo("imputeMissingCallsWithTSO - DONE")
+
+  return(calls)
+}
+
+
+# Helper function for @seealso imputeMissingCallsWithTSO
+# insert a list of TSO call data of a year
+impute <- function(tso.list){
+
+  resList <- list()
+  # look at every TSO data.frame
+  for(t in 1:length(tso.list)) {
+    df <- tso.list[[t]]
+    # Check if TSO has missing values
+    if(nrow(df[is.na(df$neg_MW), ]) > 0) {
+      df <- imputeMissingValuesOfTSO(df)
+    }
+    resList[[t]] <- df
+  }
+
+  return(resList)
+}
+
+# Used in @seealso impute
+# Replaces missing values og´f TSO call data with the value of the day before
+imputeMissingValuesOfTSO <- function(calls){
+  # Get all missing observations
+  df <- calls[is.na(calls$neg_MW),]
+
+  for(i in 1:nrow(df)){
+    # for every missing value, get the value of the date before --> DateTime in seconds so 24h == 86400sec
+    dayBefore <- df[i,"DateTime"] - 86400
+    # get the value
+    valueNeg <- calls[calls$DateTime == dayBefore, "neg_MW"]
+    valuePos <- calls[calls$DateTime == dayBefore, "pos_MW"]
+
+    # Get the missing observation and replace the na with the values
+    calls[calls$DateTime == df[i,"DateTime"], "neg_MW"] <- valueNeg
+    calls[calls$DateTime == df[i,"DateTime"], "pos_MW"] <- valuePos
+
+  }
+
+  return(calls)
+}
+
+# Helper function for @seealso imputeMissingCallsWithTSO
+# sums up the data for neg and pos SR of the 4 TSOs for the missing dates
+sumUp <- function(tso.list, missingdates) {
+
+  a <- filter(tso.list[[1]], DateTime %in% missingdates)
+  b <- filter(tso.list[[2]], DateTime %in% missingdates)
+  c <- filter(tso.list[[3]], DateTime %in% missingdates)
+  d <- filter(tso.list[[4]], DateTime %in% missingdates) # --> has all values
+
+  rr <- list(a,b,c,d) %>%
+    Reduce(function(dtf1,dtf2) full_join(dtf1,dtf2,by="DateTime"), .)
+
+  # Rename the result columns and drop some useless columns
+  colnames(rr) <- c("DateTime", "neg_MW.1", "pos_MW.1", "TZ.1","neg_MW.2", "pos_MW.2", "TZ.1", "neg_MW.3", "pos_MW.3","TZ.3", "neg_MW.4", "pos_MW.4", "TZ")
+  rr <- rr[, !(names(rr) %in% c("TZ.1", "TZ.2", "TZ.3"))]
+
+  # count unique na per rows --> if only 2 then only only one TSO has a missing value --> 2013 = always one TSO with NA // 2012 = always one TSO with NA // 2011 = 1 and once 3 TSO with NA
+  unique(apply(rr, 1, function(x) sum(is.na(x))))
+
+  # subset rr into two data.frames with negative and positive MW
+  rrPos <- rr[, c("DateTime", "TZ", "pos_MW.1", "pos_MW.2", "pos_MW.3", "pos_MW.4")]
+  rrNeg <- rr[, c("DateTime", "TZ", "neg_MW.1", "neg_MW.2", "neg_MW.3", "neg_MW.4")]
+  # Then melt each subset into long data
+  rrPos <- melt(rrPos, id.vars=c("DateTime", "TZ"))
+  rrNeg <- melt(rrNeg, id.vars=c("DateTime", "TZ"))
+  # Sort by Date to have chronological order and not order by TSO
+  rrPos <- arrange(rrPos, DateTime)
+  rrNeg <- arrange(rrNeg, DateTime)
+  # Rename columns for better access
+  colnames(rrPos) <- c("DateTime", "TZ", "TSO", "pos_MW")
+  colnames(rrNeg) <- c("DateTime", "TZ", "TSO", "neg_MW")
+  # Modify the TSO variable --> just give each TSO a number from 1 - 4
+  rrPos$TSO <- substr(rrPos$TSO, nchar(as.character(rrPos$TSO)), nchar(as.character(rrPos$TSO)))
+  rrNeg$TSO <- substr(rrNeg$TSO, nchar(as.character(rrNeg$TSO)), nchar(as.character(rrNeg$TSO)))
+
+  # Build a unified data.frame
+  agg <- cbind(rrNeg, pos_MW = rrPos$pos_MW)
+  # sum neg_MW and pos_MW of the 4 TSO by each DateTime
+  agg = aggregate(cbind(neg_MW, pos_MW) ~ DateTime, data = agg, sum, na.rm = TRUE)
+
+  return(agg)
+
+}
+
+
+
+
 #' @title preprocessOperatingReserveNeeds
 #'
 #' @description This method transforms the original retrieved operating reserve needs into a nicer data.frame.

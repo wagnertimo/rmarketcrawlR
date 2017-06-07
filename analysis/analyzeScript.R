@@ -88,48 +88,6 @@ system.time(getMarginalWorkPrices(needs,calls,auctions,2))
 
 
 
-#' Building a getAllData() function --> it returns a list of yearly based list elements with calls.YYYY, needs.YYYY, auctions.YYYY
-#' from 2011-06-27 till 2017-03-31
-#'
-#' E.g.:
-#'
-#' list:
-#'
-#' [[2016]]
-#'         [1] calls.2016
-#'         [2] needs.2016
-#'         [3] auctions.2016
-#' [[2015]]
-#'         [1] calls.2015
-#'         [2] needs.2015
-#'         [3] auctions.2015
-#'
-#' (...)
-#'
-#' Only for SRL and Netzreglverbund
-#'
-getAllData <- function(start = "2011-06-27", end = "2017-03-31") {
-
-  start <- format(as.Date(start), "%d.%m.%Y")
-  end <- format(as.Date(end), "%d.%m.%Y")
-
-  allData <- list()
-
-  # build the yearly time periods
-  year <-
-  auctions <- getReserveAuctions(start, paste('31.12.', year, sep=""), '2')
-  calls <- getReserveCalls(start, paste('31.12.', year, sep=""), '6', 'SRL')
-  needs <- getReserveNeeds(start, paste('31.12.', year, sep=""))
-
-
-  auctions <- getReserveAuctions('01.01.2015', '31.12.2015', '2')
-  calls <- getReserveCalls('01.01.2015', '31.12.2015', '6', 'SRL')
-  needs <- getReserveNeeds('01.01.2015', '31.12.2015')
-
-}
-
-
-
 #'------------------------------------------------------------------------------------------------------
 #
 # !!! CAUTION Infinity loop on 2016-10-30 --> daylight savings
