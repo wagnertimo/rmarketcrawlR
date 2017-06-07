@@ -221,19 +221,51 @@ For time series analysis on such a data set, it is not appropriate to leave them
 
 - **Use the data of other years:** Since there is no intersection with the missing dates, it is possible to impute the missing values with the values of the year before. Only problem is that for 2011 (also for february 2012) no data of 2010 (february 2011) is available. Another option would be to take an average of the *future* data of the years after.
 - **Use reserve needs:** It is also possible to use the 4sec reserve needs which are also used for the minutely approximation of the calls.
-- **Use TSO data:** On the given date of missing values, some TSO show SR call data. So one approach would be to sum up those observations and use it to impute the missing values for the *Netzregelverbund*. 
+- **Use the data of the TSOs:** On the given date of missing values, some TSO show SR call data. So one approach would be to sum up those observations and use it to impute the missing values for the *Netzregelverbund*. 
 
 
-We will go for the latter. Taking the reserve needs would cause a big deviation, since the needs and actual calls differ remarkably. Averaging future years would lead to missinterpretations. Using TSO data seems natural because the summation of the four yield into the *Netzregelverbund* variable. It is also noticed that only one (only for 2011 at `2011-10-30 23:00:00` for one hour 3 TSO lack with data) TSO has missing values for the dates of interest which should keep the error small. This leaves the question how to impute the missing value of that TSO. A simple approach would be to take the value of the day before(this is possible because the first observation has no missing value(`2011-07-01`)). 
+We will go for the latter. Taking the reserve needs would cause a big deviation, since the needs and actual calls differ remarkably. Averaging future years would lead to missinterpretations. Using TSO data seems natural because the summation of the four yield into the *Netzregelverbund* variable. It is also noticed that only one (only for 2011 at `2011-10-30 23:00:00` for one hour 3 TSO lack with data) TSO has missing values for the dates of interest which should keep the error small. This leaves the question how to impute the missing value of that TSO. A simple approach would be to take the value of the day before. This is possible because the first observation has no missing value(`2011-07-01`). The code sample below imputes the data for the already downloaded `data.frames` `calls.2013` `calls.2012` and `calls.2011`.
 
 ```r
-# TODO!! --> Compare the deviations of both approaches in comparison with the 15min calls of the Netzregelverbund.
-# 1. Calculate first approach (Average of TSOs) and compute the deviations between data of TSOs and *Netzregelverund*
-# 2. Calculate the deviations of 15min avg 4sec needs with 15min calls
-# 3. Compute the 15min calls out of the 4sec needs
+# Use the call data of the 4 TSOs to impute the missing values of the calls (Netzregelverbund) in 2013, 2012 and 2011
 
+# Load the TSO data
+# 50Hz (4)
+calls.2013.4 = getReserveCalls('01.01.2013', '31.12.2013', '4', 'SRL')
+calls.2012.4 = getReserveCalls('01.01.2012', '31.12.2012', '4', 'SRL')
+calls.2011.4 = getReserveCalls('01.07.2011', '31.12.2011', '4', 'SRL')
+# TenneT (2)
+calls.2013.2 = getReserveCalls('01.01.2013', '31.12.2013', '2', 'SRL')
+calls.2012.2 = getReserveCalls('01.01.2012', '31.12.2012', '2', 'SRL')
+calls.2011.2 = getReserveCalls('01.07.2011', '31.12.2011', '2', 'SRL')
+# Amprion (3)
+calls.2013.3 = getReserveCalls('01.01.2013', '31.12.2013', '3', 'SRL')
+calls.2012.3 = getReserveCalls('01.01.2012', '31.12.2012', '3', 'SRL')
+calls.2011.3 = getReserveCalls('01.07.2011', '31.12.2011', '3', 'SRL')
+# TransnetBW (1)
+calls.2013.1 = getReserveCalls('01.01.2013', '31.12.2013', '1', 'SRL')
+calls.2012.1 = getReserveCalls('01.01.2012', '31.12.2012', '1', 'SRL')
+calls.2011.1 = getReserveCalls('01.07.2011', '31.12.2011', '1', 'SRL')
+
+tso.list.2013 <- list(calls.2013.1,calls.2013.2,calls.2013.3,calls.2013.4)
+tso.list.2012 <- list(calls.2012.1,calls.2012.2,calls.2012.3,calls.2012.4)
+tso.list.2011 <- list(calls.2011.1,calls.2011.2,calls.2011.3,calls.2011.4)
+
+#
+# Impute missing calls with TSO data
+#
+imputed.calls.2013 <- imputeMissingCallsWithTSO(calls.2013, tso.list.2013)
+imputed.calls.2012 <- imputeMissingCallsWithTSO(calls.2012, tso.list.2012)
+imputed.calls.2011 <- imputeMissingCallsWithTSO(calls.2011, tso.list.2011)
+
+# Sanity check that no NA are left
+imputed.calls.2013[is.na(imputed.calls.2013$neg_MW), ]
+imputed.calls.2012[is.na(imputed.calls.2012$neg_MW), ]
+imputed.calls.2011[is.na(imputed.calls.2011$neg_MW), ]
 
 ```
+> Further references in the analysis to `calls.2013` `calls.2012` and `calls.2011` contain the imputed data sets.
+
 
 #### Explore Data
 
