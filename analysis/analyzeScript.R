@@ -25,18 +25,14 @@ getTheMeanPowerPrice(df, 'NEG_NT', '20.03.2017')
 #' Testing the production script file: minScript.R
 
 auctions.2016 <- getReserveAuctions('01.01.2016', '31.12.2016', '2')
-calls.2016 <- getReserveCalls('01.01.2016', '31.12.2016', '6', 'SRL')
-needs.2016 <- getReserveNeeds('01.01.2016', '31.12.2016')
+calls.2015 <- getReserveCalls('01.01.2015', '31.12.2015', '6', 'SRL')
+needs.2015 <- getReserveNeeds('01.01.2015', '31.12.2015')
 
 auctions <- getReserveAuctions('24.10.2016', '30.10.2016', '2')
 calls <- getReserveCalls('30.10.2016', '30.10.2016', '6', 'SRL')
 needs <- getReserveNeeds('30.10.2016', '30.10.2016')
 
-
-
 approx <- getOneMinuteCalls(needs,calls)
-
-
 
 # sample the 2016 data
 start <- 1  # start observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
@@ -45,8 +41,6 @@ end <- 672   # end observation number of 15min calls (--> e.g. 49*15/60 gives th
 needs <- needs.2016[(((start - 1)*225) + 1):(end*225),]
 calls <- calls.2016[start:end,]
 auctions <- auctions.2016
-
-
 
 approx.calls <- getOneMinuteCalls(needs,calls)
 
@@ -403,6 +397,45 @@ d <- week %>%
         scale_x_datetime(labels = date_format("%Y-%m-%d %H:%M"))
 
 d
+
+
+
+#
+# Infinity while loop for recursion on 2011-07-26 11:15:00
+#
+# Values Jumping: -14641.545 vs. 15min NEG calls: -976.103 --> 0 vs. 15min NEG calls: -976.103
+# Values: Jumping: 0 vs. 15min POS calls: 0.38 --> 5.7 vs. 15min POS calls: 0.38
+#
+# --> observation: only 0 values for that 15min interval
+#
+# BUG in getNumberOfPosOrNegIn15min --> the function counts 0 NEG and 0 POS
+#
+#
+# needs.2011 data 0 values replaced with data of 2010
+#
+# DONE !!!
+#
+
+
+#
+# Bug: 2012: approximateCallsInRecursion(needs.2012, imputed.calls.2012)
+#
+# DONE !!!
+
+
+
+#
+# Bug: 2013, 2012, 2011 calculate marginal work price leads to error imply differing row number
+#
+# split approx calls by month and test calc marginal work price to get closer to the error
+#
+# --> guess: it has to do something with the auctions for 2011,2012 tail() revealed that last days were missing
+#
+# DONE !!!
+#
+
+
+
 
 
 

@@ -49,6 +49,8 @@ There are three main functions which allows you to crawl operating reserve calls
 
 * `getReserveNeeds(startDate, endDate)`: It retrieves the operating reserve needs for a specific time frame of the Netzregelverbund (NRV) based on a 4 sec resolution (source: https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/regelenergie-bedarf-und-abruf). It is important that you do not exceed the time range over several years including the daylight saving date (last sunday of october). Since then the `addTimezone()` function creates false data. This user inconvenience is not yet corrected. Checkout documentation for further information `?getReserveNeeds`.
 
+> It is important to mention that the function `getReserveNeeds()` will cause an error if in the main project path (working directory) other `.csv` files are located. Such files should be moved to another folder (e.g. data folder).
+
 Below you will find an example code snippet to get started. It is shown how to crawl the operating reserve power data. The auctions data is weekly based from monday till sunday. The `getReserveAuctions()` functions takes care of mapping the input dates to the right weekly beginning and ending. It is also important that you set the logging state in the begining. Till now there is no default value for it. Forgetting to set the log status will break all functions. Every main function (like the get... functions) trigger a log file to be written in the workspace directory (with execution time in its name).
 
 ```r
@@ -65,6 +67,9 @@ calls = getReserveCalls('01.01.2016', '10.01.2016', '6', 'SRL')
 auctions = getReserveAuctions('01.01.2016', '10.01.2016', '2')
 
 ```
+
+> Before you can use the collected raw data (e.g. calculating the marginal work prices and other computations based on that) it is important to mention, that there are missing values and outliers. Outliers were identified for the operative reserve needs in 2011 and 2012 (data.frames `needs.2011` and `needs.2012`). Those oultliers are characterized by continuous zero values over a longer period of observations. There are also missing values for operative reserve needs in 2012 (observations are marked with *"NaN"*) and for operative reserve calls in 2011, 2012 and 2013 (negative and positive power of the *Netzregelverbund*). For those missing call values a function was implemented in the package (see next section). The operative needs in 2012 and the outliers in 2011 and 2012 have to be treated should one handle on its own. For further information look at the `analysis.nb.html` file in the markdown folder.
+
 
 #### Impute missing calls
 
@@ -143,4 +148,7 @@ Data of operating reserve calls are available since 2011-06-27 at https://www.re
 Data of operating reserve needs (4sec data) are available since July 2010 at https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/.
 
 
-Version v02 - 21.04.2017
+
+Version v03 - 10.06.2017
+
+
