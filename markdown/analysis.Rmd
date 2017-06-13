@@ -222,7 +222,7 @@ head(zeroCounts)
 # 4 2012-08-07 11:15:00   225
 ```
 
-To replace or impute those zero values we could simply take the data of the (two) year before on `2010-07-26` (`2012-08-07`). I will show the replacement procedure for the data of 2011. Therefore we will compare  some statistics with the observations of an hour before and after the outliers. 
+To replace or impute those zero values we could simply take the data of the (two) year before on `2010-07-26` (`2010-08-07`). I will show the replacement procedure for the data of 2011. Therefore we will compare  some statistics with the observations of an hour before and after the outliers. 
 
 ```{r}
 
@@ -545,13 +545,95 @@ imputed.calls.2011[is.na(imputed.calls.2011$neg_MW), ]
 
 ##### Approximation of minutely calls
 
+Since we need a higher resolution for the operative reserve calls (one minute instead of 15 minutes), the next step is now to approximate one minute operative reserve calls from the operative reserve needs data. 
+
+The approximation follows several steps:
+
+1. The 4sec operative reserve needs are averaged on an one minute base. Those 15 observations build the base value which is going to be corrected by the difference of its 15min average and the reserve call value. 
+
+2. The 15min reserve need averages are computed for positive and negative needs and compared to the positive and negative reserve calls respectively.
+
+3. The difference value of the positive (negative) average gets evenly distributed among the positive (negative) minutely reserve needs within that 15 minutes. 
+
+4. This corrected average difference (fractioned by the number of positive (negative) reserve needs) is added up to the one minute reserve need value.
+
+After this procedure the 15 miunte averages of the corrected one minute reserve need should equal the retrieved reserve calls (for positive and negative calls respectively). The figure below shows visually the approximation. The light grey solid line represents the 4sec reserve needs on the `2016-01-01 00:15 - 00:30`. The solid blue step line is the 1min average and the solid green (red) line is the 15min average of positive (negative) reserve needs. On the other hand, you can see the dashed green (red) line which represents the 15min reserve calls. Since the time period is only 15 minutes we see a straight line. The approximated 1min call is the dashed blue step line. You can notice the downward correction for the negative reserves, due to the negative deviation of the 15min average and the reserve call (solid vs. dashed red line). Vice versa, the positive needs are corrected upwards. The corrections are all of the same amount for each minute (depending on positive or negative number of minutes) and are slightly higher than the delta between the 15min average of the reserve needs and the calls, because less positive (negative) minutes have to compensate the whole 15 minute value.
+
+![Approximation of 1min calls (2016-01-01 00:15 - 00:30)](apx.normal.png){ width=120% }
+
+
+**Special cases**
+
+
+So far you have seen a normal case. But the deviations between reserve needs and calls can be divergent such that the 15min average for the needs shows no value where as reserve calls had been activated. This special case is called **homogenity**. There can be two types of homogenity:
+
+- *Negative homogenity* occurs if all 1min averaged needs within the 15min period are negative (i.e. 15min average is zero), but the 15 minute reserve call show demand for positive reserve power. 
+
+- *Positive homogenity* occurs if all  1min averaged needs within the 15min period are positive (i.e. 15min average is zero), but the 15 minute reserve call show demand for negative reserve power. 
+
+Those two cases are illustrated in the following two graphs. The first graph shows negative homogenity. Hereby, all blue solid lines are in the negative power, but the dashed green light is not aligned with the solid green line on the value of 0 MW. This means there was demand for positive reserve power. The second plot deals with the opposite, negative homogenity case.
+
+![Approximation of 1min calls with special case of negative homogenity (2016-01-01 00:00 - 00:15)](apx.neg.special.png){ width=120% }
+
+
+![Approximation of 1min calls with special case of positive homogenity (2016-01-01 00:30 - 00:45)](apx.pos.special.png){ width=120% }
+
+To encounter those special cases. We have to add a minute of positive (in the negative homogentiy case) or negative (in the positive homogenity case)  reserve power which compensates the whole 15 minute reserve call power. The chosen minute will be the smallest absolute value of the positive (negative) powers. Hence, the 15 minute averages have to be newly computed. And then the new difference yields in the new correction value. 
+
+The next plot shows the result of the correction of the negative homogenity case example. You can see that the minute of the 1min averaged reserve need with the lowest negative power value is selected as the positive reserve power minute to compensate the whole 15 minutes. Similarly, the 15 minute average for the negative *minutes* is updated and the new delta is added up for the correction of those minutes. Now the dashed and solid lines are aligned.
+
+![Final result of the approximation of 1min calls with special case of negative homogenity (2016-01-01 00:00 - 00:15)](apx.neg.special.2.png){ width=120% }
+
+
+
+
+Now it could happen that with the new correction another (or more) approximated 1 minute call(s) switches its sign. This case is called **zero crossing**. All in all this forces to an iterative approximation process. Thereby, the values get corrected as long as the new 15min average equals the reserve call. The graphic below illustrates such a case on the `2016-01-01 12:15`. The approximation, as it would occur in the normal case, yields to change signs for four minutes which showed negative reserve power needs before. At this state the positive 15 minute average (accounting the four minute values) would not match with the reserve call value. Hence, another iteration (correction process) is needed to equalize both values.
+
+![First iteration of the approximation of 1min calls with zero crossing values (2016-01-01 12:15 - 12:30)](apx.zero.cross.1.png){ width=120% }
+
+In the plot below you can see the result after another correction. Now, the 15 minute average of the reserve needs equals the reserve calls. The values of the four positive *minutes* were lowered, where as the negative *minutes* rose since fewer values have to compensate the positive delta between the reserve calls and needs.
+
+![Final iteration of the approximation of 1min calls with zero crossing values (2016-01-01 12:15 - 12:30)](apx.zero.cross.2.png){ width=120% }
+
+
+The `rmarketcrawlR` package includes a function to calculate the approximation. The code snippet below shows an example on how to get the approximations for 2016. If you are interested in the marginal work prices (as we are), you can skip this function, since the method for computing marginal work prices already contains this correction procedure. 
+
+```{r}
+# Calculate the approximated 1min calls from the 4sec operating reserve needs data
+approx.calls.2016 = getOneMinuteCalls(needs.2016, calls.2016)
+
+```
 
 
 
 ##### Calculation of marginal work prices and call probabilities
 
+In the chapters before we dived into the data and pre-processed it. It was also shown how the approximation of the one minute calls is calculated. Now it is time to use the pre-processed data to calculate the marginal work prices for every approximated minute. The output of the approximation function `getOneMinuteCalls()` is not needed, since the `getMarginalWorkPrices()` also computes the approximation. 
 
+The calculation is straight forward. For every minute (observation) the approximated reserve power (positive or negaative), the related time (and its tarif indication) is matched up with the auctions data. The match up orders the auctions from lowest to highest work price bid. Its offered power is cumulated. The bid (offer) where its cumulated value equals or exceeds the approximated reserve power defines the marginal work price. Offers equal or below this price had been called to deliver the reserve power.
 
+To proceed with the analysis, we will now use the `getMarginalWorkPrices()` of the R package to calculate the marginal work prices for 2011 till 2016 on a minutely resolution.
+```r
+# Calculate the marginal work prices from the preprocessed raw input data (see sections above) for the years 2011 - 2016
+mwp.2016 = getMarginalWorkPrices(needs.2016, calls.2016, auctions.2016, numCores = 2)
+mwp.2015 = getMarginalWorkPrices(needs.2015, calls.2015, auctions.2015, numCores = 2)
+mwp.2014 = getMarginalWorkPrices(needs.2014, calls.2014, auctions.2014, numCores = 2)
+mwp.2013 = getMarginalWorkPrices(needs.2013, calls.2013, auctions.2013, numCores = 2)
+mwp.2012 = getMarginalWorkPrices(needs.2012, calls.2012, auctions.2012, numCores = 2)
+mwp.2011 = getMarginalWorkPrices(needs.2011, calls.2011, auctions.2011, numCores = 2)
+
+# Combine all years into one data set
+mwp.2011.2016 = rbind(mwp.2011, mwp.20112, mwp.2013, mwp.2014, mwp.2015, mwp.2016)
+```
+
+Now, we have combined all the years of data to a single data.frame. Let us have look at the first observations and the structure of the data.
+
+```{r}
+head(mwp.2011.2016)
+```
+```{r}
+str(mwp.2011.2016)
+```
 
 
 
@@ -575,17 +657,6 @@ auctions.2016 %>%
 
 
 ##### Marginal Work Prices
-
-```{r}
-# Calculate the marginal work prices from the preprocessed raw input data (see sections above)
-mwp.2016 = getMarginalWorkPrices(needs.2016, calls.2016, auctions.2016, numCores = 2)
-mwp.2015 = getMarginalWorkPrices(needs.2015, calls.2015, auctions.2015, numCores = 2)
-mwp.2014 = getMarginalWorkPrices(needs.2014, calls.2014, auctions.2014, numCores = 2)
-mwp.2013 = getMarginalWorkPrices(needs.2013, calls.2013, auctions.2013, numCores = 2)
-mwp.2012 = getMarginalWorkPrices(needs.2012, calls.2012, auctions.2012, numCores = 2)
-mwp.2011 = getMarginalWorkPrices(needs.2011, calls.2011, auctions.2011, numCores = 2)
-
-```
 
 ```{r}
 ggplot(data = data.pos, aes(x=marginal_work_price)) +

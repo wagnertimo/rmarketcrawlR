@@ -2,8 +2,10 @@
 #' Script to build models and analysis (plots, tables)
 #'
 
+# Get Data Part
+# ------------------------------------------------------------------------------------------------------------------------------------------------
 
-#' Get Data
+
 needs.2016 = getReserveNeeds('01.01.2016', '31.12.2016')
 calls.2016 = getReserveCalls('01.01.2016', '31.12.2016', '6', 'SRL')
 auctions.2016 = getReserveAuctions('01.01.2016', '31.12.2016', '2')
@@ -32,8 +34,24 @@ calls.2011 = getReserveCalls('01.07.2011', '31.12.2011', '6', 'SRL')
 auctions.2011 = getReserveAuctions('01.07.2011', '31.12.2011', '2')
 
 
+mwp.2011.2016 = read.csv("../../Data/mwp.2011.2016.csv", sep = ",", dec = ".", header = TRUE)
+mwp.2017.05 = read.csv("../../Data/mwp.2017.05.csv", sep = ",", dec = ".", header = TRUE)
+
+mwp.2017.05 = mwp.2017.05[,!(names(mwp.2017.05) %in% c("X"))]
+
+
+
+
+# ------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+#
+# Explore Data Part
+#
+
 
 # Auctions Data
+# ------------------------------------------------------------------------------------------------------------------------------------------------
 
 # filter by direction
 # and get average of the
@@ -45,10 +63,11 @@ auctions.2016 %>%
   ggplot(aes(x = date_from, y = avg, colour = Direction)) +
   geom_line()
 
+# ------------------------------------------------------------------------------------------------------------------------------------------------
 
 
-
-#' Look at Marginal Work Prices - Descriptive Statistics
+# Marginal Work Prices
+# ------------------------------------------------------------------------------------------------------------------------------------------------
 library(ggplot2)
 library(dplyr)
 
@@ -128,68 +147,49 @@ ggplot(mwp.2016, aes(x=Direction, y=marginal_work_price)) +
 
 
 
+# ------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 
-#'
-#' Impute the missing values ---> Compare TSO average with 4sec needs 15min avg
-#'
-
-# Get call and need data for 2013, 2012, 2011 // Netzregelverbund (6)
-# --> see above
-
-# Get call data for TSOs for 2013, 2012, 2011
-# 50Hz (4)
-calls.2013.4 = getReserveCalls('01.01.2013', '31.12.2013', '4', 'SRL')
-calls.2012.4 = getReserveCalls('01.01.2012', '31.12.2012', '4', 'SRL')
-calls.2011.4 = getReserveCalls('01.07.2011', '31.12.2011', '4', 'SRL')
-# TenneT (2)
-calls.2013.2 = getReserveCalls('01.01.2013', '31.12.2013', '2', 'SRL')
-calls.2012.2 = getReserveCalls('01.01.2012', '31.12.2012', '2', 'SRL')
-calls.2011.2 = getReserveCalls('01.07.2011', '31.12.2011', '2', 'SRL')
-# Amprion (3)
-calls.2013.3 = getReserveCalls('01.01.2013', '31.12.2013', '3', 'SRL')
-calls.2012.3 = getReserveCalls('01.01.2012', '31.12.2012', '3', 'SRL')
-calls.2011.3 = getReserveCalls('01.07.2011', '31.12.2011', '3', 'SRL')
-# TransnetBW (1)
-calls.2013.1 = getReserveCalls('01.01.2013', '31.12.2013', '1', 'SRL')
-calls.2012.1 = getReserveCalls('01.01.2012', '31.12.2012', '1', 'SRL')
-calls.2011.1 = getReserveCalls('01.07.2011', '31.12.2011', '1', 'SRL')
-
-
-# Get the array of missing value dates for the Netzregelverbund calls in 2013, 2012, 2011
-missingdates.2013 <- calls.2013[is.na(calls.2013$neg_MW), "DateTime"]
-missingdates.2012 <- calls.2012[is.na(calls.2012$neg_MW), "DateTime"]
-missingdates.2011 <- calls.2011[is.na(calls.2011$neg_MW), "DateTime"]
-
-# check if years have same missing dates ---> All years have different missing dates!
-intersect(missingdates.2013, missingdates.2012) # --> different missing dates
-intersect(missingdates.2013, missingdates.2011) # --> different missing dates
-intersect(missingdates.2012, missingdates.2011) # --> different missing dates
-
-
+# Environment for Hacking-Session
 #
-# Impute missing calls with TSO data
+# -------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+# 1)      Überprüfung der minütlich berechneten Grenzarbeitspreise für zufällige Tage
+# à Sicherheit schaffen, da Grundlage für weitere Betrachtungen
 #
-imputed.calls.2013 <- imputeMissingCallsWithTSO(calls.2013, list.tso.2013)
-imputed.calls.2012 <- imputeMissingCallsWithTSO(calls.2012, list.tso.2012)
-imputed.calls.2011 <- imputeMissingCallsWithTSO(calls.2011, list.tso.2011)
-
-all.equal(imputed.calls.2013,calls.2013)
-all.equal(imputed.calls.2012,calls.2012)
-all.equal(imputed.calls.2011,calls.2011)
-
-imputed.calls.2013[is.na(imputed.calls.2013$neg_MW), ]
-imputed.calls.2012[is.na(imputed.calls.2012$neg_MW), ]
-imputed.calls.2011[is.na(imputed.calls.2011$neg_MW), ]
-
-
+# 2)      Erzeugung von Graphen, die die Entwicklung der Arbeitspreise über die Jahre darstellen
+# à Trend erkennbar?
+#
+# 3)      Erzeugung von Graphen, die saisonale Charakteristiken verdeutlichen
+# à Saisonalität erkennbar?
+#
+# 4)      Erzeugung von Graphen, die die Fluktuation der nachgefragten Regelleistung (Gesamtabruf pro Minute; unabhängig von Arbeitspreis) darstellen
+# à Wird immer gleich viel Regelleistung nachgefragt, wann mehr, wann weniger, lassen sich Patterns erkennen? Was sind die Auswirkungen auf die Abrufe in den Merit-Order-Listen?
+#
+# 5)      Erzeugung von Graphen, die die Ähnlichkeit/Verschiedenheit der Merit-Order-Listen der einzelnen Wochen verdeutlichen
+# à Sind die Gebote immer ähnlich oder nicht?
 
 
 
 
 
-#mwp.2016 = calcMarginalWorkPrices(approx.calls.2016, auctions.2016, 2)
+
+
+
+# -------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
 
 
 

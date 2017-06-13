@@ -181,8 +181,20 @@ get15minAVGOf1minAVG <- function(dataframe, direction) {
 
 
 
-#' This helper method is used in @seealso approxRecursionWith15minChunk
-#' It retrieves a data.frame and returns the same data.frame with added columns for NEG and POS 15min avg of the 1min needs
+#' @title get15minAVGs
+#'
+#' @description This helper method is used in @seealso approxRecursionWith15minChunk. It retrieves a data.frame and returns the same data.frame with added columns for NEG and POS 15min avg of the 1min needs
+#'
+#' @param dataframe - the data.frame with with operating reserve needs (already preprocessed) and cuttedTime variable 15min is passed in (save computation time!)
+#'
+#' @return the input data.frame with added columns for 15min neg and pos averages
+#'
+#' @examples
+#' df.needs <- getOperatingReserveNeeds("30.12.2015", "30.12.2015")
+#' df.needs.preprocessed <- preprocessOperatingReserveNeeds(df.needs)
+#' df.avg.15min.neg <- getAVGXmin(df.needs.preprocessed, "NEG")
+#'
+#' @export
 #'
 get15minAVGs <- function(dataframe) {
 

@@ -1,4 +1,3 @@
-
 #'
 #' Testing script to analyze errors and build new functions
 #'
@@ -435,17 +434,154 @@ d
 #
 
 
+auctions.2016 <- getReserveAuctions('01.01.2016', '31.12.2016', '2')
+calls.2016 <- getReserveCalls('01.01.2016', '31.12.2016', '6', 'SRL')
+needs.2016 <- getReserveNeeds('01.01.2016', '31.12.2016')
+
+#
+# Show 1min call approximation --> graphics
+#
+# ------------------------------------------------------------------------------------------------------------
+setLogging(TRUE)
+
+# get sample
+# sample the 2016 data
+start <- 1  # start observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
+end <- 1   # end observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
+
+needs <- needs.2016[(((start - 1)*225) + 1):(end*225),]
+calls <- calls.2016[start:end,]
+auctions <- auctions.2016
+
+# get end result of correction
+ap <- approximateCallsInRecursion(needs, calls)
+
+r <- merge(needs, ap, by.x=c("cuttedTime"), by.y=c("DateTime"))
+names(r)[names(r) == "avg_1min_MW"] <- "Corrected"
+names(r)[names(r) == "TZ.x"] <- "TZ"
+r <- dropColsInDF(r, c("cuttedTime", "TZ.y"))
+r2 <- aggregateXminAVGMW(r, "1")
+r$cuttedTime <- cut(r$DateTime, breaks = paste("1", "min", sep = " "))
+r$cuttedTime <- as.POSIXct(r$cuttedTime, tz = "Europe/Berlin")
+r <- merge(r, r2, by.x=c("cuttedTime"), by.y=c("DateTime"))
+
+rm(r2)
+
+
+# Calculating the approximation step by step (manually to see whats going on) --> simulating the functions of the package
+# -----
+
+# Calculate the 1min average operating reserve needs out of the 4sec data
+df.needs.1min <- aggregateXminAVGMW(needs, 1)
+
+# Join with 15min calls
+# Cut 1min avg needs into 15min for join operation
+needs$cuttedTime <- cut(needs$DateTime, breaks = paste("1", "min", sep = " "))
+needs$cuttedTime <- as.POSIXct(needs$cuttedTime, tz = "Europe/Berlin")
+needs$TZ <- ifelse(needs$TZ == needs[1, "TZ"], 0, 1)
+df.needs.1min$TZ <- ifelse(df.needs.1min$TZ == df.needs.1min[1, "TZ"], 0, 1)
+t.needs = merge(needs, df.needs.1min, by.x=c("TZ", "cuttedTime"), by.y=c("TZ", "DateTime"))
+
+t.needs$cuttedTime <- cut(t.needs$DateTime, breaks = paste("15", "min", sep = " "))
+t.needs$cuttedTime <- as.POSIXct(t.needs$cuttedTime, tz = "Europe/Berlin")
+calls$TZ <- ifelse(calls$TZ == calls[1, "TZ"], 0, 1)
+t.all = merge(t.needs, calls, by.x=c("TZ", "cuttedTime"), by.y=c("TZ", "DateTime"))
+
+df.needs.1min$cuttedTime <- cut(df.needs.1min$DateTime, breaks = paste("15", "min", sep = " "))
+df.needs.1min$cuttedTime <- as.POSIXct(df.needs.1min$cuttedTime, tz = "Europe/Berlin")
+t <- getNumberOfPosOrNegIn15min(df.needs.1min)
+t <- merge(df.needs.1min, t, by = "cuttedTime")
+
+t <- get15minAVGs(t)
+t <- unique(t[, !(names(t) %in% c("DateTime","avg_1min_MW"))])
+names(t)[names(t) == "cuttedTime"] <- "DateTime"
+
+t.all = merge(t.all, t, by.x=c("TZ", "cuttedTime"), by.y=c("TZ", "DateTime"))
+
+rm(t, df.needs.1min, t.needs)
+
+# Correction
+t.all$cuttedTime2 <- cut(t.all$DateTime, breaks = paste("1", "min", sep = " "))
+t.all$cuttedTime2 <- as.POSIXct(t.all$cuttedTime2, tz = "Europe/Berlin")
+t.all <- unique(t.all[,5:12])
+names(t.all)[names(t.all) == "cuttedTime2"] <- "DateTime"
+
+# optional to show special case --> Use this block if there is homogenity
+# ----
+t.all$cuttedTime <- cut(t.all$DateTime, breaks = paste("15", "min", sep = " "))
+t.all$cuttedTime <- as.POSIXct(t.all$cuttedTime, tz = "Europe/Berlin")
+t <- calcHomogenityCorrectness(t.all)
+# !!!!!! --> ONLY use this line for the next recursions
+t <- calcHomogenityCorrectness(t) # !!!!!! --> ONLY use this line for the next recursions
+
+t <- dropColsInDF(t, c("avg_15min_MW_NEG", "avg_15min_MW_POS"))
+t <- get15minAVGs(t)
+t <- correctionCalculationForRecursion(t)
+names(t)[names(t) == "avg_1min_MW"] <- "Corrected"
+t <- cbind(t, avg_1min_MW = t.all$avg_1min_MW)
+
+tc = merge(needs, t, by.x=c("cuttedTime"), by.y=c("DateTime"))
+
+# To simulate another recursion delete some columns (have to be newly computed) and rename corrected
+t <- dropColsInDF(t, c("avg_1min_MW", "Homo_NEG", "Homo_POS"))
+names(t)[names(t) == "Corrected"] <- "avg_1min_MW"
+# --> start at line 501 (t <- calcHomogenityCorrectness(t.all)) again but as input use t
+
+# ----
+
+
+# normal case again
+t.all$Corrected = ifelse(t.all$avg_1min_MW < 0, t.all$avg_1min_MW + ((t.all$neg_MW - t.all$avg_15min_MW_NEG) * (15/t.all$NEG)),
+                         t.all$avg_1min_MW + ((t.all$pos_MW - t.all$avg_15min_MW_POS) * (15/t.all$POS)))
+t.all = merge(needs, t.all, by.x=c("cuttedTime"), by.y=c("DateTime"))
+
+
+
+# Plot the 1min call approximations with:
+# 4sec reserve needs, 1min/15min (pos and neg) avg reserve needs, pos/neg reserve calls and the corrected(appprox) value
+#----
+ggplot(r, aes(DateTime)) +
+  geom_line(aes(y = MW, colour="4s reserve need", linetype = "4s reserve need")) +
+  geom_step(aes(y = avg_1min_MW, colour="1min reserve need", linetype = "1min reserve need")) +
+  geom_step(aes(y = avg_15min_MW_NEG, colour="Neg. 15min reserve need", linetype = "Neg. 15min reserve need")) +
+  geom_step(aes(y = avg_15min_MW_POS, colour="Pos. 15min reserve need", linetype = "Pos. 15min reserve need")) +
+  geom_step(aes(y = neg_MW, colour="Neg. reserve call", linetype = "Neg. reserve call")) +
+  geom_step(aes(y = pos_MW, colour="Pos. reserve call", linetype = "Pos. reserve call")) +
+  geom_step(aes(y = Corrected, colour="Approx. 1min call", linetype = "Approx. 1min call")) +
+  scale_colour_manual(name = "Legend:", values = c("1min reserve need" = "#515a7b",
+                                 "4s reserve need" = "#b6b6b6",
+                                 "Approx. 1min call" = "#515a7b",
+                                 "Neg. 15min reserve need" = "#fc3927",
+                                 "Neg. reserve call" = "#fc3927",
+                                 "Pos. 15min reserve need" = "#56c871",
+                                 "Pos. reserve call" = "#56c871")) +
+  scale_linetype_manual(guide = FALSE, values=c("Neg. reserve call" = 2,
+                                 "Pos. reserve call" = 2,
+                                 "Approx. 1min call" = 2,
+                                 "4s reserve need" = 1,
+                                 "1min reserve need" = 1,
+                                 "Neg. 15min reserve need" = 1,
+                                 "Pos. 15min reserve need" = 1)) +
+  labs(x = "Time", y = "Power (in MW)") +
+  ggtitle('Approximated 1min Reserve Calls') +
+  theme(plot.title = element_text(size = 20, face="bold", margin = margin(10, 0, 10, 0)),
+        axis.title.x = element_text(color="black", vjust=-0.35),
+        axis.title.y = element_text(color="black" , vjust=0.35)
+  ) +
+  scale_y_continuous(label = function(x){return(paste( x, " MW"))}) +
+  theme_bw() +
+  # center title
+  theme(plot.title = element_text(hjust = 0.5)) +
+  guides(color = guide_legend(override.aes = list(linetype = c(1, 1, 2, 1, 2, 1, 2))))
+
+# ----
 
 
 
 
 
 
-
-
-
-
-
+# ------------------------------------------------------------------------------------------------------------
 
 
 

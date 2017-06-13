@@ -62,7 +62,6 @@ plotAVGMWvs4secMW <- function(dataframe) {
 #' @return a line chart with the averages of operating reserve needs (grey)...
 #'
 #' @examples
-#' dataframe <- approximateCalls(s.needs, s.calls)
 #' plotCorrectedNeeds(dataframe)
 #'
 #' @export
@@ -72,21 +71,38 @@ plotCorrectedNeeds <- function(dataframe){
   library(ggplot2)
 
   g2 <- ggplot(dataframe, aes(DateTime)) +
-    # geom_line(aes(y = MW, colour = "MW")) +
-    geom_step(aes(y = avg_1min_MW, colour = "avg. 1min needs")) +
-    geom_step(aes(y = avg_15min_MW_NEG, colour = "avg. neg. 15min needs")) +
-    geom_step(aes(y = avg_15min_MW_POS, colour = "avg. pos. 15min needs")) +
-    geom_step(aes(y = neg_MW, colour = "avg. neg. calls")) +
-    geom_step(aes(y = pos_MW, colour = "avg. pos. calls")) +
-    geom_step(aes(y = Corrected, colour = "Corrected")) +
-    scale_colour_manual(values = c("#79c5dc", "#fb7474", "#de1b1b", "#77d49c", "#5cb26c", "#ababab")) +
-    labs(x = "Date and Time", y = "Power (in MW)") +
-    ggtitle('Operating Reserve Needs') +
+    geom_line(aes(y = MW, colour="4s reserve need", linetype = "4s reserve need")) +
+    geom_step(aes(y = avg_1min_MW, colour="1min reserve need", linetype = "1min reserve need")) +
+    geom_step(aes(y = avg_15min_MW_NEG, colour="Neg. 15min reserve need", linetype = "Neg. 15min reserve need")) +
+    geom_step(aes(y = avg_15min_MW_POS, colour="Pos. 15min reserve need", linetype = "Pos. 15min reserve need")) +
+    geom_step(aes(y = neg_MW, colour="Neg. reserve call", linetype = "Neg. reserve call")) +
+    geom_step(aes(y = pos_MW, colour="Pos. reserve call", linetype = "Pos. reserve call")) +
+    geom_step(aes(y = Corrected, colour="Approx. 1min call", linetype = "Approx. 1min call")) +
+    scale_colour_manual(name = "Legend:", values = c("1min reserve need" = "#515a7b",
+                                                     "4s reserve need" = "#b6b6b6",
+                                                     "Approx. 1min call" = "#515a7b",
+                                                     "Neg. 15min reserve need" = "#fc3927",
+                                                     "Neg. reserve call" = "#fc3927",
+                                                     "Pos. 15min reserve need" = "#56c871",
+                                                     "Pos. reserve call" = "#56c871")) +
+    scale_linetype_manual(guide = FALSE, values=c("Neg. reserve call" = 2,
+                                                  "Pos. reserve call" = 2,
+                                                  "Approx. 1min call" = 2,
+                                                  "4s reserve need" = 1,
+                                                  "1min reserve need" = 1,
+                                                  "Neg. 15min reserve need" = 1,
+                                                  "Pos. 15min reserve need" = 1)) +
+    labs(x = "Time", y = "Power (in MW)") +
+    ggtitle('Approximated 1min Reserve Calls') +
     theme(plot.title = element_text(size = 20, face="bold", margin = margin(10, 0, 10, 0)),
-          axis.title.x = element_text(color="forestgreen", vjust=-0.35),
-          axis.title.y = element_text(color="cadetblue" , vjust=0.35)
+          axis.title.x = element_text(color="black", vjust=-0.35),
+          axis.title.y = element_text(color="black" , vjust=0.35)
     ) +
-    scale_y_continuous(label = function(x){return(paste( x, " MW"))})
+    scale_y_continuous(label = function(x){return(paste( x, " MW"))}) +
+    theme_bw() +
+    # center title
+    theme(plot.title = element_text(hjust = 0.5)) +
+    guides(color = guide_legend(override.aes = list(linetype = c(1, 1, 2, 1, 2, 1, 2))))
 
   g2
 }

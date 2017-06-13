@@ -16,7 +16,6 @@ a line chart with the averages of operating reserve needs (grey)...
 This method plots the 1min average of the operating reserve needs, 15min negative and positive needs, as well as the 15min calls against the corrected 1min needs to approximate the 1min calls.
 }
 \examples{
-dataframe <- approximateCalls(s.needs, s.calls)
 plotCorrectedNeeds(dataframe)
 
 }

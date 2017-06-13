@@ -1,0 +1,15 @@
+2017-06-13 12:04:06 INFO::preprocessOperatingReserveNeeds - Changing factor variable Time to character
+2017-06-13 12:04:06 INFO::buildDataFrameForDateCodes - Looping through dateCodes to scrape data
+2017-06-13 12:04:06 INFO::getDateCodesArray - Building the dateCodes in while loop
+2017-06-13 12:04:06 DEBUG::Building the dateCode  201007
+2017-06-13 12:04:06 INFO::scrape_rl_need_month - Scrape data for  201007
+2017-06-13 12:04:06 INFO::scrape_rl_need_month - Download data for  201007
+2017-06-13 12:04:14 INFO::scrape_rl_need_month - Read csv for  201007
+2017-06-13 12:04:15 INFO::scrape_rl_need_month - Read in csv file for  201007
+2017-06-13 12:04:18 INFO::scrape_rl_need_month - Delete csv file for  201007
+2017-06-13 12:04:19 INFO::getOperatingReserveNeeds - Subset the data.frame
+2017-06-13 12:04:19 INFO::getOperatingReserveNeeds - DONE
+2017-06-13 12:04:19 INFO::preprocessOperatingReserveNeeds - Changing character string of daylight saving times
+2017-06-13 12:04:19 INFO::preprocessOperatingReserveNeeds - Formatting POSIXct datetime
+2017-06-13 12:04:22 INFO::addTimezone - Add time zone
+2017-06-13 12:04:22 INFO::preprocessOperatingReserveNeeds - DONE
