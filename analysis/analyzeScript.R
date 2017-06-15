@@ -24,8 +24,8 @@ getTheMeanPowerPrice(df, 'NEG_NT', '20.03.2017')
 #' Testing the production script file: minScript.R
 
 auctions.2016 <- getReserveAuctions('01.01.2016', '31.12.2016', '2')
-calls.2015 <- getReserveCalls('01.01.2015', '31.12.2015', '6', 'SRL')
-needs.2015 <- getReserveNeeds('01.01.2015', '31.12.2015')
+calls.2016 <- getReserveCalls('01.01.2016', '31.12.2016', '6', 'SRL')
+needs.2016 <- getReserveNeeds('01.01.2016', '31.12.2016')
 
 auctions <- getReserveAuctions('24.10.2016', '30.10.2016', '2')
 calls <- getReserveCalls('30.10.2016', '30.10.2016', '6', 'SRL')
@@ -434,10 +434,6 @@ d
 #
 
 
-auctions.2016 <- getReserveAuctions('01.01.2016', '31.12.2016', '2')
-calls.2016 <- getReserveCalls('01.01.2016', '31.12.2016', '6', 'SRL')
-needs.2016 <- getReserveNeeds('01.01.2016', '31.12.2016')
-
 #
 # Show 1min call approximation --> graphics
 #
@@ -446,8 +442,8 @@ setLogging(TRUE)
 
 # get sample
 # sample the 2016 data
-start <- 1  # start observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
-end <- 1   # end observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
+start <- 2  # start observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
+end <- 2   # end observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
 
 needs <- needs.2016[(((start - 1)*225) + 1):(end*225),]
 calls <- calls.2016[start:end,]
@@ -473,6 +469,14 @@ rm(r2)
 
 # Calculate the 1min average operating reserve needs out of the 4sec data
 df.needs.1min <- aggregateXminAVGMW(needs, 1)
+df.needs.1min$cuttedTime <- cut(df.needs.1min$DateTime, breaks = paste("15", "min", sep = " "))
+df.needs.1min$cuttedTime <- as.POSIXct(df.needs.1min$cuttedTime, tz = "Europe/Berlin")
+
+t.all = merge(df.needs.1min, calls, by.x=c("TZ", "cuttedTime"), by.y=c("TZ", "DateTime"))
+
+
+t.all$pos_neg_rel <- t.all$pos_MW / t.all$neg_MW
+
 
 # Join with 15min calls
 # Cut 1min avg needs into 15min for join operation
@@ -499,6 +503,9 @@ names(t)[names(t) == "cuttedTime"] <- "DateTime"
 t.all = merge(t.all, t, by.x=c("TZ", "cuttedTime"), by.y=c("TZ", "DateTime"))
 
 rm(t, df.needs.1min, t.needs)
+
+
+
 
 # Correction
 t.all$cuttedTime2 <- cut(t.all$DateTime, breaks = paste("1", "min", sep = " "))
@@ -582,6 +589,18 @@ ggplot(r, aes(DateTime)) +
 
 
 # ------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

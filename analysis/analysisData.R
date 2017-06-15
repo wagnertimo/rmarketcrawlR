@@ -33,12 +33,23 @@ needs.2011 = getReserveNeeds('01.07.2011', '31.12.2011')
 calls.2011 = getReserveCalls('01.07.2011', '31.12.2011', '6', 'SRL')
 auctions.2011 = getReserveAuctions('01.07.2011', '31.12.2011', '2')
 
+needs.2017.05 = getReserveNeeds('01.01.2017', '31.05.2017')
+calls.2017.05 = getReserveCalls('01.01.2017', '31.05.2017', '6', 'SRL')
+auctions.2017.05 = getReserveAuctions('01.01.2017', '31.05.2017', '2')
+
 
 mwp.2011.2016 = read.csv("../../Data/mwp.2011.2016.csv", sep = ",", dec = ".", header = TRUE)
-mwp.2017.05 = read.csv("../../Data/mwp.2017.05.csv", sep = ",", dec = ".", header = TRUE)
+mwp.2011.2016$DateTime = as.POSIXct(mwp.2011.2016$DateTime)
+mwp.2011.2016 = mwp.2011.2016[,!(names(mwp.2011.2016D) %in% c("X"))]
 
+mwp.2017.05 = read.csv("../../Data/mwp.2017.05.csv", sep = ",", dec = ".", header = TRUE)
+mwp.2017.05$DateTime = as.POSIXct(mwp.2017.05$DateTime)
 mwp.2017.05 = mwp.2017.05[,!(names(mwp.2017.05) %in% c("X"))]
 
+# !! rbind would create duplicates at the end of the year
+auctions.2011.2016 <- getReserveAuctions('01.07.2011', '31.12.2016', '2')
+calls.2011.2016 <- rbind(calls.2011, calls.2012, calls.2013, calls.2014, calls.2015, calls.2016)
+needs.2011.2016 <- rbind(needs.2011, needs.2012, needs.2013, needs.2014, needs.2015, needs.2016)
 
 
 
@@ -157,25 +168,114 @@ ggplot(mwp.2016, aes(x=Direction, y=marginal_work_price)) +
 
 
 # 1)      Überprüfung der minütlich berechneten Grenzarbeitspreise für zufällige Tage
-# à Sicherheit schaffen, da Grundlage für weitere Betrachtungen
+# --> Sicherheit schaffen, da Grundlage für weitere Betrachtungen
 #
 # 2)      Erzeugung von Graphen, die die Entwicklung der Arbeitspreise über die Jahre darstellen
-# à Trend erkennbar?
+# --> Trend erkennbar?
 #
 # 3)      Erzeugung von Graphen, die saisonale Charakteristiken verdeutlichen
-# à Saisonalität erkennbar?
+# --> Saisonalität erkennbar?
 #
 # 4)      Erzeugung von Graphen, die die Fluktuation der nachgefragten Regelleistung (Gesamtabruf pro Minute; unabhängig von Arbeitspreis) darstellen
-# à Wird immer gleich viel Regelleistung nachgefragt, wann mehr, wann weniger, lassen sich Patterns erkennen? Was sind die Auswirkungen auf die Abrufe in den Merit-Order-Listen?
+# --> Wird immer gleich viel Regelleistung nachgefragt, wann mehr, wann weniger, lassen sich Patterns erkennen? Was sind die Auswirkungen auf die Abrufe in den Merit-Order-Listen?
 #
 # 5)      Erzeugung von Graphen, die die Ähnlichkeit/Verschiedenheit der Merit-Order-Listen der einzelnen Wochen verdeutlichen
-# à Sind die Gebote immer ähnlich oder nicht?
+# --> Sind die Gebote immer ähnlich oder nicht?
 
 
 
 
+# 1)      Überprüfung der minütlich berechneten Grenzarbeitspreise für zufällige Tage (--> zufällige 15min)
+# --> Sicherheit schaffen, da Grundlage für weitere Betrachtungen
+# ----
+# --> see analyzeScript.R --> at the end --> section: Calculating the approximation step by step
+
+date = "2016-01-01 00:15:00"
+date <- as.POSIXct(date)
+
+start <- 2  # start observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
+end <- 2   # end observation number of 15min calls (--> e.g. 49*15/60 gives the hour of the day)
+
+needs <- filter(needs.2011.2016, DateTime >= date, DateTime < date + 900)
+calls <- filter(calls.2011.2016, DateTime >= date, DateTime < date + 900)
+auctions <- auctions.2011.2016
+
+t <- filter(mwp.2011.2016, DateTime >= date, DateTime < date + 900)
+t2 <- getMarginalWorkPrices(needs, calls, auctions, 2)
 
 
+
+# ----
+
+
+# 2)      Erzeugung von Graphen, die die Entwicklung der Arbeitspreise über die Jahre darstellen
+# --> Trend erkennbar?
+# ----
+
+
+
+a <- auctions.2011.2016 %>%
+      group_by(date_from, Tarif, Direction) %>%
+      summarise(max_work_price = max(work_price),
+                min_work_price = min(work_price),
+                mean_work_price = mean(work_price),
+                sd_work_price = sd(work_price),
+                q75_work_price = quantile(work_price, probs=0.75),
+                q25_work_price = quantile(work_price, probs=0.25),
+                median_work_price = quantile(work_price, probs=0.5))
+
+
+(g <- ggplot(data = a[1:20,], aes(x = date_from, y = mean_work_price, color = Direction, linetype = Tarif, frame = date_from)) +
+  geom_line()
+)
+
+gganimate(g)
+
+
+(p <- ggplot(data = a, aes(x = date_from, frame = date_from)) +
+  geom_line(mapping = aes(y = max_work_price, color = "max")) +
+  geom_line(mapping = aes(y = min_work_price, color = "min")) +
+  geom_line(mapping = aes(y = median_work_price, color = "median")) +
+  geom_ribbon(aes(ymax = q75_work_price, ymin = q25_work_price), alpha = 0.4, fill = "skyblue") +
+  facet_grid(Direction ~ Tarif) +
+  scale_color_manual(values = c("max" = "#339966", "median" = "blue", "min" = "#990033")) +
+  labs(x = "Date (weekly auctions)",
+       y = "Work Price in €/MWh",
+       title = "Work Prices of the Auctions from 2011 till 2016")
+  #theme_bw()
+)
+
+p
+
+# ANIMATIOn
+
+library(gapminder)
+
+theme_set(theme_bw())
+(p <- ggplot(gapminder, aes(gdpPercap, lifeExp, size = pop, color = continent, frame = year)) +
+  geom_point() +
+  scale_x_log10()
+)
+
+gganimate(p)
+
+install.packages("magick")
+
+
+# ----
+
+
+
+# 3)      Erzeugung von Graphen, die saisonale Charakteristiken verdeutlichen --> Arbeitspreise?
+# --> Saisonalität erkennbar?
+
+
+
+t <- mwp.2011.2016 %>% filter(num_recursions == 2)
+
+
+ggplot(t[31:45,], aes(DateTime, approx_1min_call)) +
+  geom_step()
 
 
 # -------------------------------------------------------------------------------------------------------------------------------------------------
@@ -183,11 +283,17 @@ ggplot(mwp.2016, aes(x=Direction, y=marginal_work_price)) +
 
 
 
+t <- t.all
 
 
 
-
-
+ggplot(t.all, aes(x = DateTime)) +
+  #geom_line(aes(y = MW), color = "grey") +
+  geom_step(aes(y = avg_1min_MW), color = "blue") +
+  #geom_step(aes(y = avg_15min_MW_NEG), color = "red") +
+  # geom_step(aes(y = avg_15min_MW_POS), color = "green") +
+  geom_step(aes(y = neg_MW), color = "red", linetype = 3) +
+  geom_step(aes(y = pos_MW), color = "green", linetype = 3)
 
 
 
