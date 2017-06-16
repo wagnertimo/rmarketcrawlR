@@ -285,6 +285,7 @@ ggplot(t[31:45,], aes(DateTime, approx_1min_call)) +
 
 t <- t.all
 
+unique(t.all$pos_MW / t.all$neg_MW)
 
 
 ggplot(t.all, aes(x = DateTime)) +
@@ -298,9 +299,84 @@ ggplot(t.all, aes(x = DateTime)) +
 
 
 
+#' @param df - with avg_1min_MW and cuttedTime (15min), DateTime (1min) and TZ (in 0,1)
+#'
+getZeroLine <- function(df) {
+
+  pos_neg_rel <-  0
+  avg_1min_MW_min <-  min(df$avg_1min_MW)
+  avg_1min_MW_max <-  max(df$avg_1min_MW)
+  pos_neg_rel_target <- abs(unique(df$pos_MW / df$neg_MW))
+
+  while(abs(pos_neg_rel_target - pos_neg_rel) > 1){
+
+    zeroLine = (max(avg_1min_MW_min) + min(avg_1min_MW_max)) / 2
+    pos_neg_rel = calcRelation(df, avg_1min_MW_min, avg_1min_MW_max, zeroLine)
+
+    if (pos_neg_rel > pos_neg_rel_target) {
+      avg_1min_MW_min = zeroLine # oberhalb suchen
+    } else {
+      avg_1min_MW_max = zeroLine # unterhalb suchen
+    }
+
+  }
+
+}
+
+#' Calculate the integral. pos values above zero line and neg below. sum up for pos and neg
+#'
+#' @param df - with avg_1min_MW and cuttedTime (15min), DateTime (1min) and TZ (in 0,1)
+#' @param zeroLine - the new zero line
+calcRelation <- function(df, min, max, zeroLine) {
+
+  sumPosWerte <- 0;
+  sumNegWerte <- 0;
+  posPart <- ifelse(df$avg_1min_MW > zeroLine & df$avg_1min_MW < max)
+
+  for(e in nrow(df)) {
+
+    if (e$avg_1min_MW > zeroLine) {
+      # is positive
+      posWert = ...
+    } else {
+      # is negative
+      negWert = ...
+    }
+
+    sumPosWerte <-  sumPosWerte + posWert
+    sumNegWerte <-  sumNegWerte + negWert
+  }
+
+}
 
 
 
+
+#' @param df - with avg_1min_MW and cuttedTime (15min), DateTime (1min) and TZ (in 0,1)
+#'
+getZeroLineForAll <- function(df) {
+
+
+  #split the data.frame on the timezone and cuttedTime (2) variable into 15min sections
+  # creates a list
+  p <-  split(df, df$TZ)
+  path <- list()
+  for(i in 1:length(p)){
+    path <-  append(split(p[[i]], p[[i]]$cuttedTime), path,0)
+  }
+  # Init the merge data.frame
+  res <- data.frame()
+
+  # Do in parallel
+  # For every 15min section do the recursion to correct the 1min avg needs
+  for(i in 1:length(path)) {
+
+    # Do and repeat the recursion of counting NEG nad POS, correcting for homogenity, calculating the 15min NEG and POS avg of the needs, correct the needs
+    correctedData <- approxRecursionWith15minChunk(path[[i]])
+    res <- rbind(res, correctedData)
+
+  }
+}
 
 
 

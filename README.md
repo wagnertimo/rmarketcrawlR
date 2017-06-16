@@ -68,87 +68,21 @@ auctions = getReserveAuctions('01.01.2016', '10.01.2016', '2')
 
 ```
 
-> Before you can use the collected raw data (e.g. calculating the marginal work prices and other computations based on that) it is important to mention, that there are missing values and outliers. Outliers were identified for the operative reserve needs in 2011 and 2012 (data.frames `needs.2011` and `needs.2012`). Those oultliers are characterized by continuous zero values over a longer period of observations. There are also missing values for operative reserve needs in 2012 (observations are marked with *"NaN"*) and for operative reserve calls in 2011, 2012 and 2013 (negative and positive power of the *Netzregelverbund*). For those missing call values a function was implemented in the package (see next section). The operative needs in 2012 and the outliers in 2011 and 2012 have to be treated should one handle on its own.
-
-
-#### Impute missing calls
-
-For 2013, 2012 and 2011 some negative and positive secondary reserve power data is missing. To replace (impute) those `NA` values, the call data of the four TSOs (50Hz, TenneT, Amprion and TransnetBW) is used. The small code example below shows the procedure and the imputation function `imputeMissingCallsWithTSO`. It takes as arguments the data.frame of calls with missing values (e.g. 2013) and a list of the call data.frames of the TSOs.
-
-```r
-# Get call data with missing values
-calls = getReserveCalls('01.01.2013', '31.12.2013', '6', 'SRL')
-
-# 50Hz (4)
-calls.2013.4 = getReserveCalls('01.01.2013', '31.12.2013', '4', 'SRL')
-# TenneT (2)
-calls.2013.2 = getReserveCalls('01.01.2013', '31.12.2013', '2', 'SRL')
-# Amprion (3)
-calls.2013.3 = getReserveCalls('01.01.2013', '31.12.2013', '3', 'SRL')
-# TransnetBW (1)
-calls.2013.1 = getReserveCalls('01.01.2013', '31.12.2013', '1', 'SRL')
-# Build the tso list
-tso.list <- list(calls.2013.1,calls.2013.2,calls.2013.3,calls.2013.4)
-
-# Impute the data
-imputed.calls <- imputeMissingCallsWithTSO(calls, tso.list)
-```
-
-#### Get the approximated 1min Call data and the 1min marginal work prices
-
-The approximation of the operating reserve calls in a higher resolution (1 min instead of 15min) is computed by the function `getOneMinuteCalls(needs, calls)` and indirectly by the function `getMarginalWorkPrices(needs, calls, auctions, numCores)`. They consider some special cases which can occur. The case of **homogenity** where all averaged 1min reserve needs are homogenly positive (or negative) within a 15min section. This leads to a 15min average need for negative (positive) power of 0. But in the case that the 15min calls of negative (positive) power is not 0, the 1min needs have to be changed. Its smallest absolute value gets the negative (positive) value to fulfill the 15min average call in 1min. Hereby, cases can occur where the newly modified data points cross the zero level; they change their sign (case of **CrossingZero**). Hence the overall 15min average is not equal to the expected 15min call average. Therefore a recursive modification changes iteratively the data points till the averages are equal.
-
-Since calculating the marginal work prices is highly computational, it is recommended to use the parallel computing wrapper by setting the optional parameter `numCores` in the `getMarginalWorkPrices(needs, calls, auctions, numCores)` function greater than *1*. This parameter is mandatory. If you skip it the code will break.
-
-The code snippet below provides you an example to calculate either the 1min approximated calls or the marginal work prices based on the 1min calls.
-
-```r
-# Use the crawled data from above. Logging is set to true.
-
-# Calculate the approximated 1min calls from the 4sec operating reserve needs data
-approx.calls = getOneMinuteCalls(needs, calls)
-
-# Calculate directly the marginal work price by internally approximate 1min calls
-# There is also a wrapper for parallel computing. This makes sense to use if the time period lies over several days
-# Therefore set the optional parameter numCores to the amount of processors you want to use. 
-marginal.prices.parallel = getMarginalWorkPrices(needs, calls, auctions, numCores = 2)
-
-```
-
-#### Calculate the call probabilities
-
-Now that you have the data set with the 1min approximated calls and their respective marginal work prices, you are able to compute conditional call probabilities for different given work prices. The condition can be parameterized by an character array `c()`  with e.g. `Tarif` and `Direction`. Hereby, is the variable `Direction` mandatory, since the denominator (number of total observations) for the probability computation depends on `NEG` and `POS` calls. You can add extra columns/variables to the input data set (here `marginal.prices.parallel`) which can be used as conditional parameters. E.g. one can add a column `DateClass` which specifies if the observation is a work day or week end day. The function `getCallProbDataSet(data, numCores, price.seq.start, price.seq.end, granularity, conditionByColumns)` uses parallel computing, so it is necessary to specify the processors cores parameter `numCores`. The input data set has to have the `marginal_work_price` variable. 
-
-```r
-# Use the crawled data from above. Logging is set to true.
-
-# Get the conditional call probabilities for the whole data set by using just one processor core. 
-# The price range for the probabilities is from 0 to 775. 
-# The granularity is set to 1 such that the price range adds up in one steps like 0,1,2,..754,755
-# The condition is on the variables Tarif and Direction. But you could add e.g. a DateClass column and condition additionally by e.g. Weekend or Workday
-call.probs <- getCallProbDataSetOnConditions(marginal.prices.parallel, 1, 0, 775, 1, c("Tarif", "Direction"))
-
-# Plot multiple variables (value) against one target variable (key). The target has to be omitted for the values (2:...)
-library(ggplot2)
-plot <- call.probs %>%
-        # Binds rowwise. Every following column gets bind under the last row. The key variabel (here Price) gets repeated
-        gather(key, value, 2:ncol(call.probs)) %>%
-        ggplot(aes(x=Price, y=value, colour=key)) +
-        geom_line()
-
-plot
-
-```
-
-
-## Miscellaneous
-
-Data of operating reserve calls are available since 2011-06-27 at https://www.regelleistung.net/ext/data/.
-
-Data of operating reserve needs (4sec data) are available since July 2010 at https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/.
 
 
 
-Version v03 - 10.06.2017
+## Notes and Miscellaneous
+
+> Data for **operating reserve calls** are available since `2011-06-27` at https://www.regelleistung.net/ext/data/. 
+Data for **operating reserve needs** (4sec data) are available since July 2010 at https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/.
+
+
+
+> There are missing values and outliers. Outliers were identified for the operative reserve needs in 2011 and 2012. Those oultliers are characterized by continuous zero values over a longer period of observations. 
+There are also missing values for operative reserve needs in 2012 (observations are marked with *"NaN"*) and for operative reserve calls in 2011, 2012 and 2013 (negative and positive power of the *Netzregelverbund*).
+
+
+
+Version v04 - 16.06.2017
 
 

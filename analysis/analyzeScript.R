@@ -475,7 +475,7 @@ df.needs.1min$cuttedTime <- as.POSIXct(df.needs.1min$cuttedTime, tz = "Europe/Be
 t.all = merge(df.needs.1min, calls, by.x=c("TZ", "cuttedTime"), by.y=c("TZ", "DateTime"))
 
 
-t.all$pos_neg_rel <- t.all$pos_MW / t.all$neg_MW
+# t.all$pos_neg_rel <- t.all$pos_MW / t.all$neg_MW
 
 
 # Join with 15min calls
