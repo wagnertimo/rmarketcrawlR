@@ -16,11 +16,9 @@ Imports:
     tidyr,
     magrittr,
     data.table,
-    ggplot2,
     foreach,
     doParallel,
-    logging,
-    plotly
+    logging
 Author: Timo Wagner
 Maintainer: Timo Wagner <wagnertimo@gmx.de>
 Description: Retrieves the operating reserve call data of https://

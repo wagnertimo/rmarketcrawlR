@@ -529,54 +529,6 @@ buildDataFrameForDateCodes <- function(dateCodes) {
 }
 
 
-
-
-
-
-#' @title mergeCSVFilesOfNeeds
-#'
-#' @description This method merges the monthly operating reserve needs which had been downloaded and unzip from the site https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/
-#'
-#' @param year - the year where all 12 monthly data are bind together into one data.frame
-#'
-#' @return A data.frame of the merged 12 month operating reserve needs (Date, Time, Type, MW)
-#'
-#' @examples
-#' # The 12 month data has already been unziped and stored into ../data/needs
-#' df.needs.2016 <- mergeCSVFilesOfNeeds(2016)
-#'
-#' @export
-#'
-mergeCSVFilesOfNeeds <- function(year) {
-  library(logging)
-  library(lubridate)
-
-  # inint the merging data.frame
-  df <- data.frame()
-
-  for(month in 1:12){
-
-    if(getOption("logging")) loginfo(paste("mergeCSVFilesOfNeeds - Merging for ", month, " ", year))
-
-    # define the path where the file can be found
-    path <-  paste("data/needs/", year, preceedingZerosForMonths(month), "_SRL_Bedarf.csv", sep = "")
-    # load the data
-    mydata = read.csv(path, header = F)
-    # set the correct column names
-    colnames(mydata) <- c("Date","Time","Type","MW")
-    # bind the data row wise
-    df <- rbind(df, mydata)
-  }
-
-  # format the Date variable
-  df$Date <- as.Date(df$Date, format = "%Y/%m/%d")
-
-  if(getOption("logging")) loginfo("mergeCSVFilesOfNeeds - DONE")
-
-  return(df)
-}
-
-
 #'---------------------------------------------------------
 
 #
