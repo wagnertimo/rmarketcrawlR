@@ -1,4 +1,4 @@
-# rmarketcrawlR <br/> – The R package for crawling data of the german energy reserve market - 
+# rmarketcrawlR: crawling data of the german energy reserve market
 
 
 ## Goal
@@ -30,11 +30,9 @@ Before using this R package, please check that you have installed the following 
 - `tidyr`
 - `magrittr`
 - `data.table`
-- `ggplot2`
 - `doParallel`
 - `foreach`
 - `logging`
-- `plotly`
 
 
 ### Usage
@@ -71,7 +69,7 @@ auctions = getReserveAuctions('01.01.2016', '10.01.2016', '2')
 
 
 
-## Notes and Miscellaneous
+## Notes
 
 > Data for **operating reserve calls** are available since `2011-06-27` at https://www.regelleistung.net/ext/data/. 
 Data for **operating reserve needs** (4sec data) are available since July 2010 at https://www.transnetbw.de/de/strommarkt/systemdienstleistungen/.
