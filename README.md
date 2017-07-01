@@ -3,8 +3,8 @@
 
 ## Goal
 
-This R package provides functions to crawl the german operating reserve market of the platform https://www.regelleistung.net and contains scripts to analyze this data.
-It is build as part of my master thesis to analyze the calling probability of operating reserve power depending on the offered work price. The aim is to predict such call probabilities, for improving existing optimization algorithms which relay on assumptions and are not very accurate.
+This R package provides functions to crawl the german operating reserve market of the platform https://www.regelleistung.net.
+It is build as part of my master thesis to analyze the call probability of secodary reserve power depending on the offered work price. The aim is to predict such call probabilities, for improving existing optimization algorithms which relay on assumptions and are not very accurate. For further information please get in contact or follow my (blog)[https://wagnertimo.github.io].
 
 ## Get Started
 
@@ -18,7 +18,7 @@ install_github("wagnertimo/rmarketcrawlR")
 ```
 ### Library dependencies
 
-Before using this R package, please check that you have installed the following R packages. Normally during the installation of the package those dependencies will also be installed. If not you have to do it manually.
+Before using this R package, please check that you have installed the following R packages. Normally, with the installation of the package those dependencies will also be installed. If not, you have to do it manually.
 
 - `httr`
 - `xml2`
@@ -49,7 +49,7 @@ There are three main functions which allows you to crawl operating reserve calls
 
 > It is important to mention that the function `getReserveNeeds()` will cause an error if in the main project path (working directory) other `.csv` files are located. Such files should be moved to another folder (e.g. data folder).
 
-Below you will find an example code snippet to get started. It is shown how to crawl the operating reserve power data. The auctions data is weekly based from monday till sunday. The `getReserveAuctions()` functions takes care of mapping the input dates to the right weekly beginning and ending. It is also important that you set the logging state in the begining. Till now there is no default value for it. Forgetting to set the log status will break all functions. Every main function (like the get... functions) trigger a log file to be written in the workspace directory (with execution time in its name).
+Below you will find an example code snippet. It is shown how to crawl the secodary reserve power data. The auctions data is weekly based from monday till sunday. The `getReserveAuctions()` functions takes care of mapping the input dates to the right weekly beginning and ending. It is also important that you have to set the logging state in the beginning. Till now, there is no default value for it. Avoiding to set the log status will break the functions. Every main function will trigger a log file to be written in the workspace directory (with execution time in its name).
 
 ```r
 # Activate the package in the workspace
@@ -61,12 +61,10 @@ setLogging(TRUE)
 
 # Get sample data for operating needs, calls and auctions of secondary reserve power from the Netzregelverbund
 needs = getReserveNeeds('01.01.2016', '10.01.2016')
-calls = getReserveCalls('01.01.2016', '10.01.2016', '6', 'SRL')
-auctions = getReserveAuctions('01.01.2016', '10.01.2016', '2')
+calls = getReserveCalls('01.01.2016', '10.01.2016', '6', 'SRL') # 6 == Netzregelverbund, SRL == secodary reserve power
+auctions = getReserveAuctions('01.01.2016', '10.01.2016', '2') # 2 == secondary reserve power
 
 ```
-
-
 
 
 ## Notes
