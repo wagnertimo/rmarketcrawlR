@@ -364,6 +364,16 @@ build_df_rl_auctions <- function(fileName, productId) {
       df <- df[,-length(df)] # Skip last column --> this column is strangely added. Dont know why
       colnames(df) <- c("date_from","date_to","product_name","power_price","offered_power_MW","called_power_MW","country")
     }
+    #
+    # MRL
+    #
+    else if(productId == "3") {
+
+      # Columns for PRL:
+      #DATUM VON;DATUM BIS;PRODUKTNAME;LEISTUNGSPREIS [EUR/MW];ARBEITSPREIS [EUR/MWh];AP_ZAHLUNGSRICHTUNG;ANGEBOTENE_LEISTUNG [MW];ZUSCHLAG;KERNANTEILSKENNZEICHNUNG      df <- df[,-length(df)] # Skip last column --> this column is strangely added. Dont know why
+      #df <- df[,-length(df)] # Skip last column --> this column is strangely added. Dont know why
+      colnames(df) <- c("date_from","date_to","product_name","power_price","work_price","ap_payment_direction","offered_power_MW","called_power_MW", "Zuschlag", "Kernteilskennzeichnung")
+    }
 
     df$date_to <- as.Date(df$date_to, "%d.%m.%Y")
     df$date_from <- as.Date(df$date_from, "%d.%m.%Y")

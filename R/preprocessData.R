@@ -328,6 +328,15 @@ preprocessOperatingReserveAuctions <- function(df.auctions, rl) {
     df.auctions$work_price <- ifelse(df.auctions$ap_payment_direction == "ANBIETER_AN_NETZ" | df.auctions$ap_payment_direction == "Anbieter an Netz", -df.auctions$work_price, df.auctions$work_price)
 
   }
+  else if(rl == "3") {
+
+    if(getOption("logging")) loginfo("preprocessOperatingReserveAuctions - Preprocessing for MRL")
+
+    # Set the direction/sign of the work price --> ANBIETER_AN_NETZ signals a negative work price
+    # CAUTION!!! till last week of (including) 2014-12-29 the declaration is "Anbieter an Netz" then from 2015-01-05 "ANBIETER_AN_NETZ"
+    df.auctions$work_price <- ifelse(df.auctions$ap_payment_direction == "ANBIETER_AN_NETZ" | df.auctions$ap_payment_direction == "Anbieter an Netz", -df.auctions$work_price, df.auctions$work_price)
+
+  }
 
   # drop some useless columns --> USER DECIDES IF USELESS
   #drops <- c("offers_AT", "called_power_MW", "ap_payment_direction", "product_name")
