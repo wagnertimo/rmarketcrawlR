@@ -302,27 +302,38 @@ addDirection <- function(df) {
 #' @description This method transforms the original retrieved operating reserve auctions into a nicer data.frame.
 #'
 #' @param df.auctions - the data.frame containing the original retrieved operating reserve auctions
+#' @param rl - the reserve power product: PRL (1), SRL (2) ... @seealso getReserveAuctions()
 #'
 #' @return a modified data.frame containing the Type ("RZBedarf"), DateTime (as POSIXct object), the MW and the direction variable (POS or NEG)
 #'
 #' @export
 #'
-preprocessOperatingReserveAuctions <- function(df.auctions) {
+preprocessOperatingReserveAuctions <- function(df.auctions, rl) {
   library(logging)
 
-  if(getOption("logging")) loginfo("preprocessOperatingReserveAuctions - Adding Tarif and Direction variables")
-  df.auctions$Tarif <- rapply(strsplit(as.character(df.auctions$product_name), "_"), function(x) x[2])
-  df.auctions$Direction <- rapply(strsplit(as.character(df.auctions$product_name), "_"), function(x) x[1])
-
-  # Set the direction/sign of the work price --> ANBIETER_AN_NETZ signals a negative work price
-  # CAUTION!!! till last week of (including) 2014-12-29 the declaration is "Anbieter an Netz" then from 2015-01-05 "ANBIETER_AN_NETZ"
-  df.auctions$work_price <- ifelse(df.auctions$ap_payment_direction == "ANBIETER_AN_NETZ" | df.auctions$ap_payment_direction == "Anbieter an Netz", -df.auctions$work_price, df.auctions$work_price)
+  if(getOption("logging")) loginfo("preprocessOperatingReserveAuctions")
 
 
-  # ap_payment_direction
-  drops <- c("offers_AT", "called_power_MW", "ap_payment_direction", "product_name")
+  if(rl == "2") {
 
-  return(df.auctions[ , !(names(df.auctions) %in% drops)])
+    if(getOption("logging")) loginfo("preprocessOperatingReserveAuctions - Preprocessing for SRL")
+
+
+    if(getOption("logging")) loginfo("preprocessOperatingReserveAuctions - Adding Tarif and Direction variables")
+    df.auctions$Tarif <- rapply(strsplit(as.character(df.auctions$product_name), "_"), function(x) x[2])
+    df.auctions$Direction <- rapply(strsplit(as.character(df.auctions$product_name), "_"), function(x) x[1])
+
+    # Set the direction/sign of the work price --> ANBIETER_AN_NETZ signals a negative work price
+    # CAUTION!!! till last week of (including) 2014-12-29 the declaration is "Anbieter an Netz" then from 2015-01-05 "ANBIETER_AN_NETZ"
+    df.auctions$work_price <- ifelse(df.auctions$ap_payment_direction == "ANBIETER_AN_NETZ" | df.auctions$ap_payment_direction == "Anbieter an Netz", -df.auctions$work_price, df.auctions$work_price)
+
+  }
+
+  # drop some useless columns --> USER DECIDES IF USELESS
+  #drops <- c("offers_AT", "called_power_MW", "ap_payment_direction", "product_name")
+  #df.auctions = df.auctions[ , !(names(df.auctions) %in% drops)]
+
+  return(df.auctions)
 
   if(getOption("logging")) loginfo("preprocessOperatingReserveAuctions - DONE")
 

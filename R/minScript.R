@@ -30,6 +30,10 @@ setLogging <- function(logger) {
   ifelse(logger == TRUE, print("Outputs/logs will be displayed!"), print("No console outputs/logs will be displayed!"))
 }
 
+
+
+
+
 # -----------------------------------------------------------------------------------------------------------------------------------------
 # MAIN FUNCTION getReserveNeds
 
@@ -154,7 +158,7 @@ getReserveAuctions <- function(startDate, endDate, rl) {
   nameLogFile <- paste("getReserveAuctions_", gsub(":", "", as.character(Sys.time())), ".txt", sep="")
   addHandler(writeToFile, file=nameLogFile, level='DEBUG')
 
-  df <- preprocessOperatingReserveAuctions(getOperatingReserveAuctions(getAuctionDates(startDate, endDate)$start, getAuctionDates(startDate, endDate)$end, rl))
+  df <- preprocessOperatingReserveAuctions(getOperatingReserveAuctions(getAuctionDates(startDate, endDate)$start, getAuctionDates(startDate, endDate)$end, rl), rl)
 
   return(df)
 

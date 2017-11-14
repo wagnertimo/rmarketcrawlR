@@ -317,7 +317,7 @@ callGETforAuctionResults <- function(auctionId, filename) {
 # This is a strange error it still works
 #' @export
 #'
-build_df_rl_auctions <- function(fileName) {
+build_df_rl_auctions <- function(fileName, productId) {
   library(logging)
 
   if(getOption("logging")) loginfo(paste("build_df_rl_auctions - Read in file", fileName))
@@ -344,12 +344,26 @@ build_df_rl_auctions <- function(fileName) {
   # Check if csv file could be read and hence df is not empty
   if(!is.null(df)) {
 
-    # Skip last column --> this column is strangely added. Dont know why
-    df <- df[,1:9]
-    colnames(df) <- c("date_from","date_to","product_name","power_price","work_price","ap_payment_direction","offered_power_MW","called_power_MW","offers_AT")
-    # Delete last row -> there is an additional row with a parenthesis and NAs
-    # df <- df[1:nrow(df)-1,]
+    #
+    # SRL
+    #
+    if(productId == "2") {
+      # Skip last column --> this column is strangely added. Dont know why
+      df <- df[,1:9]
+      colnames(df) <- c("date_from","date_to","product_name","power_price","work_price","ap_payment_direction","offered_power_MW","called_power_MW","offers_AT")
+      # Delete last row -> there is an additional row with a parenthesis and NAs
+      # df <- df[1:nrow(df)-1,]
+    }
+    #
+    # PRL
+    #
+    else if(productId == "1") {
 
+      # Columns for PRL:
+      # DATUM VON;DATUM BIS;PRODUKTNAME;LEISTUNGSPREIS [EUR/MW];ANGEBOTENE_LEISTUNG [MW];BEZUSCHLAGTE_LEISTUNG [MW];LAND
+      df <- df[,-length(df)] # Skip last column --> this column is strangely added. Dont know why
+      colnames(df) <- c("date_from","date_to","product_name","power_price","offered_power_MW","called_power_MW","country")
+    }
 
     df$date_to <- as.Date(df$date_to, "%d.%m.%Y")
     df$date_from <- as.Date(df$date_from, "%d.%m.%Y")
@@ -570,7 +584,7 @@ getOperatingReserveAuctions <- function(date_from, date_to, productId) {
   filename <- paste("temp_auctions_", auctionIds[1], ".csv", sep = "")
 
   response_content <- callGETforAuctionResults(auctionIds[1], filename)
-  df_auctions <- build_df_rl_auctions(filename)
+  df_auctions <- build_df_rl_auctions(filename, productId)
 
   # If only one auctionId (= just auction data of one day) is called, then stop and return the initial auction data
   if(length(auctionIds) > 1) {
@@ -584,7 +598,7 @@ getOperatingReserveAuctions <- function(date_from, date_to, productId) {
         # TODO improve this function --> causes arbitrary errors while writing and reading in the temp csv file
         filename <- paste("temp_auctions_", auctionIds[j], ".csv", sep = "")
         response_content <- callGETforAuctionResults(auctionIds[j], filename)
-        df <- build_df_rl_auctions(filename)
+        df <- build_df_rl_auctions(filename, productId)
 
         df_auctions <- rbind(df_auctions, df)
 
